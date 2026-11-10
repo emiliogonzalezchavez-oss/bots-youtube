@@ -78,6 +78,13 @@ def editar(gancho, streamer):
     d.text((W / 2, 1620), "Clip: twitch.tv/" + streamer, font=fc, fill=(255, 255, 255, 220), anchor="mm",
            stroke_width=3, stroke_fill=(0, 0, 0, 200))
     im.save("overlay.png")
+    # botón "SUSCRÍBETE" (arriba de la zona que tapa la interfaz de Shorts; aparece a los 1.5 s)
+    cta = Image.new("RGBA", (W, H), (0, 0, 0, 0)); dc = ImageDraw.Draw(cta)
+    fb = ImageFont.truetype(F, 48); txt = "SUSCRÍBETE PARA MÁS CLIPS"
+    tw = dc.textlength(txt, font=fb); x0, y0 = (W - tw) / 2 - 40, 1500
+    dc.rounded_rectangle([x0, y0, x0 + tw + 80, y0 + 90], radius=45, fill=(230, 0, 0, 245))
+    dc.text((W / 2, y0 + 45), txt, font=fb, fill=(255, 255, 255, 255), anchor="mm")
+    cta.save("cta.png")
     # subtítulos
     def ts(t): return f"{int(t // 3600)}:{int(t % 3600 // 60):02d}:{t % 60:05.2f}"
     cab = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n[V4+ Styles]\n"
@@ -102,8 +109,10 @@ def editar(gancho, streamer):
     open("subs.ass", "w").write(cab + "\n".join(lin) + "\n")
     fcx = ("[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:4,eq=brightness=-0.25[bg];"
            "[0:v]scale=1400:-2,crop=1080:ih[fg];"
-           "[bg][fg]overlay=0:(H-h)/2-60[v1];[v1][1:v]overlay=0:0,subtitles=subs.ass[v]")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "clip.mp4", "-i", "overlay.png", "-filter_complex", fcx,
+           "[bg][fg]overlay=0:(H-h)/2-60[v1];[v1][1:v]overlay=0:0[v2];"
+           "[v2][2:v]overlay=0:0:enable='gte(t,1.5)',subtitles=subs.ass[v]")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "clip.mp4", "-i", "overlay.png", "-i", "cta.png",
+                    "-filter_complex", fcx,
                     "-map", "[v]", "-map", "0:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-threads", "1",
                     "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", "final.mp4"],
                    check=True)
