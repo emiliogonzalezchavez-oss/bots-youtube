@@ -86,8 +86,7 @@ def guion(key, r):
                   mov(r["pct_dia"], "Respecto al cierre anterior,") + ".",
                   mov(r["pct_mes"], "En el último mes") + ".",
                   f"Su nivel más alto del mes fue de {precio_h(key, r['max_mes'])}, y el más bajo de {precio_h(key, r['min_mes'])}."])
-    return t, random.choice(["Sigue el canal para tener el precio actualizado todos los días.",
-                             "Suscríbete y recibe el precio cada mañana."])
+    return t, f"Suscríbete y te digo el precio de {di} cada mañana.".replace("de el ", "del ")
 
 
 def narrar(texto, ruta, voz=VOZ):
@@ -171,7 +170,12 @@ def cuadro_activo(base, W, H, key, r, t, dur, canal=None):
     if t > 1.5:
         fb = fuente(46)
         if vert:
-            yb = 1580
+            if t > 2.0:
+                fc = fuente(44); tc = "SUSCRÍBETE: PRECIO DIARIO"
+                wc = d.textlength(tc, font=fc); xc = (W - wc) / 2 - 40
+                d.rounded_rectangle([xc, 1505, xc + wc + 80, 1585], radius=40, fill=(230, 0, 0))
+                cen(d, W, 1520, tc, fc, (255, 255, 255))
+            yb = 1615
             for e, val in (("Semana", r["pct_semana"]), ("Mes", r["pct_mes"])):
                 cen(d, W, yb, f"{e}: {val:+.2f}%", fb, VERDE if val >= 0 else ROJO); yb += 75
         else:
@@ -209,6 +213,7 @@ def metadatos(key, r):
     tit = f"Precio del {n.upper()} HOY{pais.upper()} {d.day} de {MESES[d.month - 1]} {d.year} | {fmt(key, r['hoy'])}"
     desc = (f"Precio de {a['di']}{pais} hoy {fecha_texto(d)}: {fmt(key, r['hoy'])} {a['unidad']}.\n"
             f"Cambio del día: {r['pct_dia']:+.2f}% | Cambio del mes: {r['pct_mes']:+.2f}%\n\n"
+            f"🔔 Suscríbete a {a['canal']} y recibe el precio cada mañana.\n\n"
             "Datos de mercado con fines informativos. No es recomendación de inversión.\n\n"
             f"{a['hashtags']} #shorts").replace("de el ", "del ")
     return tit[:100], desc, a["tags"]
