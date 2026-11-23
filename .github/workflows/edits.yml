@@ -73,8 +73,9 @@ jobs:
         run: |
           EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--still"; [ -n "${{ matrix.rango }}" ] && EXTRA="--rango ${{ matrix.rango }}"
           FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ inputs.modelo }}',{}).get('frente','auto'))")
+          GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ inputs.modelo }}',{}).get('girar') else '')")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
-            --car "$CAR" --front "$FRONT" --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
+            --car "$CAR" --front "$FRONT" $GIRAR --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
           ls -la salida
       - uses: actions/upload-artifact@v4
         with: { name: "toma-${{ matrix.toma }}-${{ strategy.job-index }}", path: salida/ }

@@ -22,6 +22,7 @@ ap.add_argument("--plan", required=True)
 ap.add_argument("--shot", type=int, default=0)
 ap.add_argument("--out", required=True)
 ap.add_argument("--front", default="auto", help="+X -X +Y -Y o auto")
+ap.add_argument("--girar", action="store_true", help="girar 180° (frente detectado al revés)")
 ap.add_argument("--samples", type=int, default=128)
 ap.add_argument("--still", action="store_true", help="1 frame a resolución completa (revisión de calidad)")
 ap.add_argument("--rango", default="", help="frames a renderizar, ej. 13-24 (para repartir una toma en varios servidores)")
@@ -69,7 +70,7 @@ elif ext == ".fbx":
 objs = list(sc.objects)
 
 # Quitar lo que no es el coche: pisos, sombras falsas, fondos, cámaras y luces del autor
-BASURA = ("plane", "ground", "floor", "shadow", "backdrop", "background", "studio", "cyc", "sky", "piso")
+BASURA = ("ground", "floor", "shadow", "backdrop", "background", "studio", "cyclorama", "skydome", "piso")
 for o in list(objs):
     if o.type in ("CAMERA", "LIGHT") or (o.type == "MESH" and any(b in o.name.lower() for b in BASURA)):
         objs.remove(o)
@@ -110,7 +111,7 @@ if front == "auto":
         front = ("+" if (hv.x if eje == "X" else hv.y) > 0 else "-") + eje
     else:
         front = "+" + eje
-ang = {"+X": 0, "-X": math.pi, "+Y": math.pi / 2, "-Y": -math.pi / 2}[front]
+ang = {"+X": 0, "-X": math.pi, "+Y": math.pi / 2, "-Y": -math.pi / 2}[front] + (math.pi if A.girar else 0)
 center = Vector(((mn.x + mx.x) / 2, (mn.y + mx.y) / 2, mn.z))
 car.matrix_world = Matrix.Rotation(-ang, 4, "Z") @ Matrix.Translation(-center)
 bpy.context.view_layer.update()
@@ -144,8 +145,6 @@ for m in bpy.data.materials:
         if not ec.is_linked:
             ec.default_value = (1, 0.05, 0.02, 1)
         es.default_value = max(es.default_value, 10)
-    elif emits and es.default_value > 0:
-        es.default_value = max(es.default_value, 6)
 
 # ------------------------------------------------------------------ estudio
 world = bpy.data.worlds.new("Estudio")
@@ -165,10 +164,11 @@ wl.new(mix.outputs["Shader"], out.inputs["Surface"])
 # Piso: oscuro, semibrillante, se pierde a negro con la distancia (ciclorama infinito)
 piso = bpy.data.materials.new("Piso"); piso.use_nodes = True
 nt = piso.node_tree; P = nt.nodes["Principled BSDF"]
-P.inputs["Base Color"].default_value = (0.018, 0.018, 0.02, 1)
-P.inputs["Roughness"].default_value = 0.32
+P.inputs["Base Color"].default_value = (0.010, 0.010, 0.011, 1)
+P.inputs["Roughness"].default_value = 0.5
+P.inputs["Specular IOR Level"].default_value = 0.22
 tc = nt.nodes.new("ShaderNodeTexCoord"); vl = nt.nodes.new("ShaderNodeVectorMath"); vl.operation = "LENGTH"
-mr = nt.nodes.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = 4; mr.inputs["From Max"].default_value = 14
+mr = nt.nodes.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = 3; mr.inputs["From Max"].default_value = 10
 blk = nt.nodes.new("ShaderNodeBsdfDiffuse"); blk.inputs["Color"].default_value = (0, 0, 0, 1)
 ms = nt.nodes.new("ShaderNodeMixShader"); outm = nt.nodes["Material Output"]
 nt.links.new(tc.outputs["Object"], vl.inputs[0]); nt.links.new(vl.outputs["Value"], mr.inputs["Value"])
@@ -191,7 +191,7 @@ def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)
 
 
 # Iluminación de estudio de autos: cenital grande + tiras laterales + contraluz + relleno frontal
-softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1400, (0.3, 0, 0))
+softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("TiraDer", (-L * 0.55, -W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("Contra", (-L * 1.6, 0, 2.2), 3.0, 1.2, 380, (0, 0, 0.6))
@@ -208,6 +208,10 @@ tt = cam.constraints.new("TRACK_TO"); tt.target = mira; tt.track_axis = "TRACK_N
 # puntos clave del coche (frente en +X, lado derecho en -Y)
 F, B, Y, Z = mx.x, mn.x, W / 2, H
 FARO = (F - 0.35, -Y * 0.72, Z * 0.48)
+_heads = [o for o in meshes(objs) if any(k in o.name.lower() for k in ("headl", "head_l", "headlight", "faro"))]
+if _heads:
+    _a, _b = bbox(_heads)
+    FARO = (_b.x - 0.15, -Y * 0.7, (_a.z + _b.z) / 2)
 CALAVERA = (B + 0.25, -Y * 0.72, Z * 0.58)
 RUEDA = (F - L * 0.2, -Y, Z * 0.27)
 
