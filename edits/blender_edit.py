@@ -24,6 +24,7 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--front", default="auto", help="+X -X +Y -Y o auto")
 ap.add_argument("--samples", type=int, default=128)
 ap.add_argument("--still", action="store_true", help="1 frame a resolución completa (revisión de calidad)")
+ap.add_argument("--rango", default="", help="frames a renderizar, ej. 13-24 (para repartir una toma en varios servidores)")
 A = ap.parse_args(argv)
 PLAN = json.load(open(A.plan))
 SHOT = PLAN["shots"][A.shot]
@@ -280,6 +281,9 @@ else:
     r.image_settings.file_format = "FFMPEG"
     r.ffmpeg.format = "MPEG4"; r.ffmpeg.codec = "H264"
     r.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"; r.ffmpeg.ffmpeg_preset = "GOOD"
+    if A.rango:
+        a, b = (int(x) for x in A.rango.split("-"))
+        sc.frame_start, sc.frame_end = a, min(b, N)
     r.filepath = os.path.join(A.out, f"toma_{A.shot:02d}_")
     bpy.ops.render.render(animation=True)
 print("LISTO", t, N)

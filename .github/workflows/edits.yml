@@ -36,7 +36,15 @@ jobs:
         run: |
           curl -sfL "${{ inputs.musica }}" -o musica.mp3
           python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }}
-          echo "tomas=$(python -c "import json;print(json.dumps(list(range(len(json.load(open('plan.json'))['shots'])))))")" >> $GITHUB_OUTPUT
+          PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
+          import json, os
+          shots = json.load(open("plan.json"))["shots"]
+          if os.environ["PREV"] == "true":
+              m = [{"toma": i, "rango": ""} for i in range(len(shots))]
+          else:  # cada toma en pedazos de 12 frames -> hasta 20 servidores en paralelo
+              m = [{"toma": i, "rango": f"{a}-{min(a + 11, s['frames'])}"} for i, s in enumerate(shots) for a in range(1, s["frames"] + 1, 12)]
+          print("tomas=" + json.dumps(m))
+          PY
       - uses: actions/upload-artifact@v4
         with: { name: plan, path: "plan.json\nmusica.mp3" }
 
@@ -46,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toma: ${{ fromJSON(needs.plan.outputs.tomas) }}
+        include: ${{ fromJSON(needs.plan.outputs.tomas) }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
@@ -61,15 +69,15 @@ jobs:
       - name: Bajar modelo
         env: { SKETCHFAB_TOKEN: "${{ secrets.SKETCHFAB_TOKEN }}" }
         run: echo "CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m)" >> $GITHUB_ENV
-      - name: Render toma ${{ matrix.toma }}
+      - name: Render toma ${{ matrix.toma }} ${{ matrix.rango }}
         run: |
-          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--still"
+          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--still"; [ -n "${{ matrix.rango }}" ] && EXTRA="--rango ${{ matrix.rango }}"
           FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ inputs.modelo }}',{}).get('frente','auto'))")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
             --car "$CAR" --front "$FRONT" --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
           ls -la salida
       - uses: actions/upload-artifact@v4
-        with: { name: "toma-${{ matrix.toma }}", path: salida/ }
+        with: { name: "toma-${{ matrix.toma }}-${{ strategy.job-index }}", path: salida/ }
 
   montar:
     needs: [plan, render]
