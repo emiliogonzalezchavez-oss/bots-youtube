@@ -55,6 +55,25 @@ def meshes(objs):
     return [o for o in objs if o.type == "MESH"]
 
 
+def bbox_robusto(objs, q=0.4):
+    """bbox ignorando antenas, espejos sueltos y basura: percentiles de los vértices"""
+    import numpy as np
+    pts = []
+    for o in meshes(objs):
+        n = len(o.data.vertices)
+        if n == 0:
+            continue
+        co = np.empty(n * 3, dtype=np.float32); o.data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        if n > 20000:
+            co = co[np.random.default_rng(0).choice(n, 20000, replace=False)]
+        M = np.array(o.matrix_world)
+        pts.append(co @ M[:3, :3].T + M[:3, 3])
+    P = np.concatenate(pts)
+    lo, hi = np.percentile(P, q, axis=0), np.percentile(P, 100 - q, axis=0)
+    return Vector(lo.tolist()), Vector(hi.tolist())
+
+
 def bbox(objs):
     pts = [o.matrix_world @ Vector(c) for o in meshes(objs) for c in o.bound_box]
     return (Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts))),
@@ -96,7 +115,7 @@ for o in objs:
 bpy.context.view_layer.update()
 
 # Orientación: el largo es el eje horizontal más grande; el frente se detecta por los faros
-mn, mx = bbox(objs)
+mn, mx = bbox_robusto(objs)
 dims = mx - mn
 eje = "X" if dims.x >= dims.y else "Y"
 front = A.front
@@ -115,11 +134,14 @@ ang = {"+X": 0, "-X": math.pi, "+Y": math.pi / 2, "-Y": -math.pi / 2}[front] + (
 center = Vector(((mn.x + mx.x) / 2, (mn.y + mx.y) / 2, mn.z))
 car.matrix_world = Matrix.Rotation(-ang, 4, "Z") @ Matrix.Translation(-center)
 bpy.context.view_layer.update()
-mn, mx = bbox(objs)
+mn, mx = bbox_robusto(objs)
 k = LARGO / (mx.x - mn.x)
 car.matrix_world = Matrix.Scale(k, 4) @ car.matrix_world
 bpy.context.view_layer.update()
-mn, mx = bbox(objs)
+mn, mx = bbox_robusto(objs)
+car.location.z -= bbox(objs)[0].z   # llantas tocando el piso (bbox real, no el robusto)
+bpy.context.view_layer.update()
+mn, mx = bbox_robusto(objs)
 L, W, H = mx.x - mn.x, mx.y - mn.y, mx.z - mn.z
 print(f"COCHE L={L:.2f} W={W:.2f} H={H:.2f} frente={front} objetos={len(objs)}")
 
