@@ -1,0 +1,98 @@
+name: Edit de coche (Blender)
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: "true = solo 1 frame por toma a baja resolución (prueba rápida)"
+        default: "true"
+      musica:
+        description: "URL del mp3 (libre de derechos)"
+        default: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3"
+      segundos:
+        description: "Duración del edit"
+        default: "14"
+
+permissions:
+  contents: write
+
+env:
+  BLENDER_URL: https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
+  HDRI_URL: https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/studio_small_09_2k.hdr
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tomas: ${{ steps.p.outputs.tomas }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install -q librosa
+      - id: p
+        run: |
+          curl -sfL "${{ inputs.musica }}" -o musica.mp3
+          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }}
+          echo "tomas=$(python -c "import json;print(json.dumps(list(range(len(json.load(open('plan.json'))['shots'])))))")" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with: { name: plan, path: "plan.json\nmusica.mp3" }
+
+  render:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toma: ${{ fromJSON(needs.plan.outputs.tomas) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { name: plan }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libxi6 libxkbcommon0 libsm6 libgl1 libegl1 libxrender1 libxxf86vm1 libxfixes3 > /dev/null
+      - uses: actions/cache@v4
+        with: { path: ~/blender, key: blender-4.2.3 }
+      - name: Blender
+        run: |
+          if [ ! -x ~/blender/blender ]; then mkdir -p ~/blender && curl -sfL "$BLENDER_URL" | tar -xJ -C ~/blender --strip-components=1; fi
+          ~/blender/blender --version | head -1
+      - name: Coche y cielo (CC-BY / CC0)
+        run: |
+          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/KhronosGroup/glTF-Sample-Assets kh
+          git -C kh sparse-checkout set Models/CarConcept/glTF-JPG
+          curl -sfL "$HDRI_URL" -o cielo.hdr
+      - name: Render toma ${{ matrix.toma }}
+        run: |
+          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--preview"
+          ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
+            --car kh/Models/CarConcept/glTF-JPG/CarConcept.gltf --hdri cielo.hdr --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
+          ls -la salida
+      - uses: actions/upload-artifact@v4
+        with: { name: "toma-${{ matrix.toma }}", path: salida/ }
+
+  montar:
+    needs: [plan, render]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { path: arte, merge-multiple: true }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - name: Montar
+        run: |
+          mkdir -p out
+          cp arte/plan.json out/
+          if ls arte/preview_*.jpg >/dev/null 2>&1; then
+            ffmpeg -y -loglevel error -pattern_type glob -i 'arte/preview_*.jpg' -vf "scale=324:-1,tile=4x2" -frames:v 1 out/preview.jpg
+          else
+            (cd arte && mkdir -p tomas && mv toma_*.mp4 tomas/ && bash ../edits/montar.sh plan.json tomas ../out/edit.mp4)
+          fi
+          ls -la out
+      - name: Guardar en la rama renders
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
+          D=$(date -u +%Y%m%d-%H%M); mkdir -p "$D"; cp out/* "$D"/
+          git add "$D"; git commit -qm "render $D"; git push -q origin renders
+          echo "Guardado en renders/$D"
