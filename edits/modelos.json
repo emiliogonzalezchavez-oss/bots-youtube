@@ -7,7 +7,7 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "Muy real"
+  "nota": "El más real: el faro de cerca parece foto"
  },
  {
   "uid": "8568d9d14a994b9cae59499f0dbed21e",
@@ -17,7 +17,7 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "Muy real"
+  "nota": "Muy real (antena alta)"
  },
  {
   "uid": "b2303a552b444e5b8637fdf5169b41cb",
@@ -25,9 +25,9 @@
   "autor": "lionsharp",
   "licencia": "CC BY-SA 4.0",
   "frente": "auto",
-  "aprobado": null,
+  "aprobado": true,
   "girar": false,
-  "nota": "Repetir: carrocería borrada por error"
+  "nota": "Bien; pintura algo plana"
  },
  {
   "uid": "2b509d1bce104224b147c81757f6f43a",
@@ -35,9 +35,9 @@
   "autor": "TinoD2",
   "licencia": "CC BY 4.0",
   "frente": "auto",
-  "aprobado": null,
+  "aprobado": true,
   "girar": false,
-  "nota": "Repetir: rines brillaban por error"
+  "nota": "Bien; carrocería algo plástica"
  },
  {
   "uid": "b53782a00cc240a191d5d7d005af1423",
@@ -55,9 +55,9 @@
   "autor": "saitoyang",
   "licencia": "CC BY 4.0",
   "frente": "auto",
-  "aprobado": null,
-  "girar": false,
-  "nota": "Repetir: carrocería borrada por error"
+  "aprobado": true,
+  "girar": true,
+  "nota": "Real"
  },
  {
   "uid": "a5737bf3cc9b4179a6e5ebe173ff70d9",

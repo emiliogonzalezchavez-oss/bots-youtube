@@ -159,6 +159,9 @@ for m in bpy.data.materials:
     es = p.inputs["Emission Strength"]
     ec = p.inputs["Emission Color"]
     emits = ec.is_linked or sum(ec.default_value[:3]) > 0.05
+    if any(k in nm for k in ("rim", "wheel", "brake", "caliper", "disc", "rin", "rueda", "freno")):
+        es.default_value = 0.0   # rines/frenos nunca brillan
+        continue
     if any(k in nm for k in ("headl", "drl", "angel", "light_w", "lightwhite")):
         if not ec.is_linked:
             ec.default_value = (1, 0.96, 0.9, 1)
