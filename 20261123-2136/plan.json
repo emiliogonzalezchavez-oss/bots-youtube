@@ -1,0 +1,41 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 133.027,
+ "tempo": 152.0,
+ "paint": "Pearl",
+ "shots": [
+  {
+   "name": "reveal",
+   "frames": 93
+  },
+  {
+   "name": "rueda",
+   "frames": 47
+  },
+  {
+   "name": "lateral",
+   "frames": 47
+  },
+  {
+   "name": "trasera",
+   "frames": 46
+  },
+  {
+   "name": "cenital",
+   "frames": 47
+  },
+  {
+   "name": "pasada",
+   "frames": 47
+  },
+  {
+   "name": "orbita",
+   "frames": 46
+  },
+  {
+   "name": "rueda",
+   "frames": 47
+  }
+ ]
+}
