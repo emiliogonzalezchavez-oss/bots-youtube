@@ -10,8 +10,8 @@ on:
         description: "true = 1 frame por toma a resolución completa (revisión antes del render largo)"
         default: "true"
       musica:
-        description: "URL del mp3 (libre de derechos)"
-        default: "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3"
+        description: "URL del mp3 (vacío = phonk al azar de edits/musica.json, sin Content ID)"
+        default: ""
       segundos:
         description: "Duración del edit"
         default: "14"
@@ -34,7 +34,10 @@ jobs:
       - run: pip install -q librosa
       - id: p
         run: |
-          curl -sfL "${{ inputs.musica }}" -o musica.mp3
+          URL="${{ inputs.musica }}"
+          [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
+          echo "Música: $URL"
+          curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
           python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }}
           PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
