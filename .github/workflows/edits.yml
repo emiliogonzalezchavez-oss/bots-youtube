@@ -3,8 +3,11 @@ name: Edit de coche (Blender)
 on:
   workflow_dispatch:
     inputs:
+      modelo:
+        description: "UID de Sketchfab de un modelo APROBADO (edits/modelos.json)"
+        required: true
       preview:
-        description: "true = solo 1 frame por toma a baja resolución (prueba rápida)"
+        description: "true = 1 frame por toma a resolución completa (revisión antes del render largo)"
         default: "true"
       musica:
         description: "URL del mp3 (libre de derechos)"
@@ -18,7 +21,6 @@ permissions:
 
 env:
   BLENDER_URL: https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
-  HDRI_URL: https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/studio_small_09_2k.hdr
 
 jobs:
   plan:
@@ -56,16 +58,15 @@ jobs:
         run: |
           if [ ! -x ~/blender/blender ]; then mkdir -p ~/blender && curl -sfL "$BLENDER_URL" | tar -xJ -C ~/blender --strip-components=1; fi
           ~/blender/blender --version | head -1
-      - name: Coche y cielo (CC-BY / CC0)
-        run: |
-          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/KhronosGroup/glTF-Sample-Assets kh
-          git -C kh sparse-checkout set Models/CarConcept/glTF-JPG
-          curl -sfL "$HDRI_URL" -o cielo.hdr
+      - name: Bajar modelo
+        env: { SKETCHFAB_TOKEN: "${{ secrets.SKETCHFAB_TOKEN }}" }
+        run: echo "CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m)" >> $GITHUB_ENV
       - name: Render toma ${{ matrix.toma }}
         run: |
-          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--preview"
+          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--still"
+          FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ inputs.modelo }}',{}).get('frente','auto'))")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
-            --car kh/Models/CarConcept/glTF-JPG/CarConcept.gltf --hdri cielo.hdr --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
+            --car "$CAR" --front "$FRONT" --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
           ls -la salida
       - uses: actions/upload-artifact@v4
         with: { name: "toma-${{ matrix.toma }}", path: salida/ }
@@ -83,8 +84,8 @@ jobs:
         run: |
           mkdir -p out
           cp arte/plan.json out/
-          if ls arte/preview_*.jpg >/dev/null 2>&1; then
-            ffmpeg -y -loglevel error -pattern_type glob -i 'arte/preview_*.jpg' -vf "scale=324:-1,tile=4x2" -frames:v 1 out/preview.jpg
+          if ls arte/still_*.jpg >/dev/null 2>&1; then
+            ffmpeg -y -loglevel error -pattern_type glob -i 'arte/still_*.jpg' -vf "scale=360:-1,tile=4x2" -frames:v 1 out/preview.jpg
           else
             (cd arte && mkdir -p tomas && mv toma_*.mp4 tomas/ && bash ../edits/montar.sh plan.json tomas ../out/edit.mp4)
           fi

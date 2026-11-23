@@ -1,6 +1,6 @@
 """Arma el plan del edit: elige el tramo más intenso de la canción y corta las tomas en los beats.
 Uso: python plan.py musica.mp3 plan.json [segundos]"""
-import json, random, sys
+import json, sys
 import librosa
 import numpy as np
 
@@ -29,13 +29,13 @@ while i < len(bs):
     cuts.append(bs[i]); i += per
 if cuts[-1] < DUR - 0.5:
     cuts.append(min(DUR, bs[-1]))
-orden = ["reveal", "rueda", "lateral", "trasera", "cenital", "pasada", "orbita", "rueda", "lateral", "pasada"]
+orden = ["trasera", "faro", "frente34", "perfil", "rueda", "calavera", "cenital", "frente", "faro", "perfil"]
 shots = []
 for k in range(len(cuts) - 1):
     n = round((cuts[k + 1] - cuts[k]) * FPS)
     if n >= 12:
         shots.append({"name": orden[k % len(orden)], "frames": n})
 plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1),
-        "paint": random.choice(["Carmine", "Graphite", "Pearl"]), "shots": shots}
+        "shots": shots}
 json.dump(plan, open(out, "w"), indent=1)
 print(json.dumps(plan))
