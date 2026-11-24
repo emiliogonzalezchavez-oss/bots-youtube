@@ -140,7 +140,13 @@ k = LARGO / (mx.x - mn.x)
 car.matrix_world = Matrix.Scale(k, 4) @ car.matrix_world
 bpy.context.view_layer.update()
 mn, mx = bbox_robusto(objs)
-car.location.z -= bbox(objs)[0].z   # llantas tocando el piso (bbox real, no el robusto)
+# Llantas apoyadas en el piso: se usa lo más bajo de las LLANTAS (no de cualquier pieza que cuelgue)
+# y se hunden 1.2 cm para que se aplaste el contacto como en una llanta real.
+_ll = [o for o in meshes(objs) if any(k in (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
+                                      for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen", "wheel"))]
+_zl = min((o.matrix_world @ v.co).z for o in _ll for v in o.data.vertices) if _ll else bbox(objs)[0].z
+car.location.z -= _zl + 0.012
+print(f"APOYO llantas={len(_ll)} z_llanta={_zl:.3f} z_min_total={bbox(objs)[0].z:.3f}")
 bpy.context.view_layer.update()
 mn, mx = bbox_robusto(objs)
 L, W, H = mx.x - mn.x, mx.y - mn.y, mx.z - mn.z
@@ -337,14 +343,15 @@ else:
 # Piso: en estudio oscuro y satinado que se pierde a negro; en exterior atrapa-sombras invisible
 piso = bpy.data.materials.new("Piso"); piso.use_nodes = True
 nt = piso.node_tree; P = nt.nodes["Principled BSDF"]
-P.inputs["Base Color"].default_value = (0.010, 0.010, 0.011, 1)
-P.inputs["Roughness"].default_value = 0.5
-P.inputs["Specular IOR Level"].default_value = 0.22
+# piso de estudio pulido (epóxico): refleja el coche nítido pero un poco difuso -> el coche "pisa" su reflejo
+P.inputs["Base Color"].default_value = (0.006, 0.006, 0.007, 1)
+P.inputs["Roughness"].default_value = 0.2
+P.inputs["Specular IOR Level"].default_value = 0.5
 tc = nt.nodes.new("ShaderNodeTexCoord")
 # textura sutil del piso que se desplaza en las tomas "manejando" (da sensación de velocidad en los reflejos)
 mpf = nt.nodes.new("ShaderNodeMapping"); nz = nt.nodes.new("ShaderNodeTexNoise")
 nz.inputs["Scale"].default_value = 1.6; nz.inputs["Detail"].default_value = 8
-rr = nt.nodes.new("ShaderNodeMapRange"); rr.inputs["To Min"].default_value = 0.38; rr.inputs["To Max"].default_value = 0.62
+rr = nt.nodes.new("ShaderNodeMapRange"); rr.inputs["To Min"].default_value = 0.12; rr.inputs["To Max"].default_value = 0.28
 nt.links.new(tc.outputs["Object"], mpf.inputs["Vector"]); nt.links.new(mpf.outputs["Vector"], nz.inputs["Vector"])
 nt.links.new(nz.outputs["Fac"], rr.inputs["Value"]); nt.links.new(rr.outputs["Result"], P.inputs["Roughness"])
 vl = nt.nodes.new("ShaderNodeVectorMath"); vl.operation = "LENGTH"
@@ -377,7 +384,7 @@ def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)
 softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("TiraDer", (-L * 0.55, -W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
-softbox("Contra", (-L * 1.6, 0, 2.2), 3.0, 1.2, 380, (0, 0, 0.6))
+softbox("Contra", (-L * 1.6, 0, 3.0), 3.0, 1.2, 380, (0, 0, 0.6))
 softbox("Frente", (L * 1.7, -W * 0.8, 1.2), 1.6, 0.9, 160, (0, 0, 0.6))
 
 # ------------------------------------------------------------------ ruedas que giran (tomas "manejando")
