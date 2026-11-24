@@ -81,7 +81,7 @@ for kind, nb in patron:
     usado += nb * bl
 
 plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1),
-        "escenario": ESC, "color": COLOR, "exposure": 0.5 if ESC == "estudio" else 0.0,
+        "escenario": ESC, "color": COLOR, "exposure": -0.5 if ESC == "estudio" else 0.0,
         "hdri_rot": rnd.randint(0, 359), "shots": shots,
         "livery": (sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else
                    rnd.choice(["gt3_blanco", "guards_red", "miami_blue", "gulf", "negro_oro", "verde_python", "amarillo", "rojo_blanco", "morado", "naranja"]))}

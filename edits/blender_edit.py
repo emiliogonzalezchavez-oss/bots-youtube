@@ -352,7 +352,7 @@ else:
         mps.inputs["Rotation"].default_value[2] = math.radians(PLAN.get("hdri_rot", 0))
         wl.new(tcs.outputs["Generated"], mps.inputs["Vector"]); wl.new(mps.outputs["Vector"], envs.inputs["Vector"])
         wl.new(envs.outputs["Color"], fill.inputs["Color"])
-        fill.inputs["Strength"].default_value = PLAN.get("hdri_estudio_fuerza", 0.45)
+        fill.inputs["Strength"].default_value = PLAN.get("hdri_estudio_fuerza", 1.0)
         print("HDRI estudio para reflejos:", PLAN["hdri_estudio"])
     lp = wn.new("ShaderNodeLightPath"); mix = wn.new("ShaderNodeMixShader")
     wl.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
@@ -392,7 +392,7 @@ if ESC == "exterior":
 def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)):
     ld = bpy.data.lights.new(name, "AREA")
     ld.shape = "RECTANGLE"; ld.size = size; ld.size_y = size_y
-    ld.energy, ld.color = energy * (0.25 if ESC == "exterior" else 1.0) * PLAN.get("luz", 1.0), color
+    ld.energy, ld.color = energy * (0.25 if ESC == "exterior" else 1.0) * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0), color
     ob = link(bpy.data.objects.new(name, ld))
     ob.location = loc
     ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
@@ -585,7 +585,7 @@ for look in (("AgX - Punchy", "Punchy") if LIV else ()) + ("AgX - Medium High Co
         break
     except TypeError:
         pass
-vs.exposure = PLAN.get("exposure", 0.5 if ESC == "estudio" else 0.0)
+vs.exposure = PLAN.get("exposure", -0.5 if ESC == "estudio" else 0.0)   # -0.5: la pintura no se lava a crema
 
 os.makedirs(A.out, exist_ok=True)
 if A.still:
