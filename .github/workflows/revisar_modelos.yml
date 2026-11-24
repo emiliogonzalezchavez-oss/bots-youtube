@@ -45,7 +45,7 @@ jobs:
       - name: Stills
         run: |
           LIV="${{ inputs.livery }}"
-          if [ "$LIV" = "variado" ]; then LIV=$(python3 -c "import zlib;l=['gt3_blanco','guards_red','miami_blue','gulf','negro_oro','verde_python','amarillo','rojo_blanco','morado','naranja'];print(l[${{ strategy.job-index }}%len(l)])"); fi
+          if [ "$LIV" = "variado" ]; then LIV=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print((m.get('${{ matrix.uid }}',{}).get('estilos') or ['gt3_blanco'])[0])"); fi
           echo "{\"id\":\"${{ matrix.uid }}_$LIV\",\"livery\":\"$LIV\",\"fps\":30,\"shots\":[{\"name\":\"hero\",\"frames\":30},{\"name\":\"trasera\",\"frames\":30},{\"name\":\"faro\",\"frames\":30}]}" > p.json; cat p.json
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ matrix.uid }}',{}).get('girar') else '')")
           for s in 0 1 2; do

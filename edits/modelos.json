@@ -7,7 +7,15 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "El más real: el faro de cerca parece foto"
+  "nota": "El más real: el faro de cerca parece foto",
+  "estilos": [
+   "gt3_blanco",
+   "miami_blue",
+   "verde_python",
+   "guards_red",
+   "negro_oro"
+  ],
+  "estilos_fuente": "991: GT3/GT3 RS en blanco con techo negro, Miami Blue, Python Green, Guards Red; rines negros o dorados"
  },
  {
   "uid": "8568d9d14a994b9cae59499f0dbed21e",
@@ -17,7 +25,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "Muy real (antena alta)"
+  "nota": "Muy real (antena alta)",
+  "estilos": [
+   "guards_red",
+   "negro_oro",
+   "morado",
+   "blanco_bronce"
+  ],
+  "estilos_fuente": "930: Guards Red (debutó en el 930), Fuchs negros, restomods morados tipo Galpin slantnose"
  },
  {
   "uid": "b2303a552b444e5b8637fdf5169b41cb",
@@ -27,7 +42,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": false,
-  "nota": "Bien; pintura algo plana"
+  "nota": "Bien; pintura algo plana",
+  "estilos": [
+   "rojo_blanco",
+   "naranja_bronce",
+   "blanco_bronce",
+   "verde_python"
+  ],
+  "estilos_fuente": "Kenmeri: estilo carrera Grupo C con franjas, rines vintage bronce/gunmetal"
  },
  {
   "uid": "2b509d1bce104224b147c81757f6f43a",
@@ -37,7 +59,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": false,
-  "nota": "Bien; carrocería algo plástica"
+  "nota": "Bien; carrocería algo plástica",
+  "estilos": [
+   "amarillo",
+   "rojo_blanco",
+   "verde_python",
+   "negro_oro"
+  ],
+  "estilos_fuente": "C7: amarillo tipo C7.R con franjas, rojo con franjas, widebody verde antifreeze"
  },
  {
   "uid": "b53782a00cc240a191d5d7d005af1423",
@@ -57,7 +86,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "Real"
+  "nota": "Real",
+  "estilos": [
+   "naranja",
+   "oro",
+   "gt3_blanco",
+   "negro_oro"
+  ],
+  "estilos_fuente": "Supra MK4: naranja icónico, dorado con rines dorados (Smokey Nagata), blanco con rines negros"
  },
  {
   "uid": "a5737bf3cc9b4179a6e5ebe173ff70d9",
@@ -67,7 +103,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": false,
-  "nota": "Real"
+  "nota": "Real",
+  "estilos": [
+   "panda",
+   "naranja_bronce",
+   "morado",
+   "blanco_bronce"
+  ],
+  "estilos_fuente": "AE86: panda blanco/negro con rines bronce estilo TE37, Solar Orange, morado Saitama"
  },
  {
   "uid": "9b13e93711db460b99749ae95aea9764",
@@ -77,7 +120,14 @@
   "frente": "auto",
   "aprobado": true,
   "girar": true,
-  "nota": "Muy real, mucho detalle"
+  "nota": "Muy real, mucho detalle",
+  "estilos": [
+   "negro_mate",
+   "morado_oro",
+   "gt3_blanco",
+   "guards_red"
+  ],
+  "estilos_fuente": "RWB: Stella Artois negro mate, morado con dorado, blanco"
  },
  {
   "uid": "e738eae819c34d19a31dd066c45e0f3d",

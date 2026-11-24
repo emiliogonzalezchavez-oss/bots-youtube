@@ -184,6 +184,12 @@ LIVERIES = {
     "amarillo":     dict(pintura=(0.80, 0.52, 0.0), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.01, 0.01, 0.01), techo=False),
     "rojo_blanco":  dict(pintura=(0.45, 0.01, 0.01), metal=0.2, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.82, 0.82, 0.82), techo=False),
     "morado":       dict(pintura=(0.12, 0.02, 0.30), metal=0.45, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="ninguna", techo=True),
+    "panda":        dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="bajo", franja=(0.008, 0.008, 0.008), techo=False),
+    "negro_mate":   dict(pintura=(0.012, 0.012, 0.013), metal=0.0, mate=True, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=False),
+    "morado_oro":   dict(pintura=(0.10, 0.015, 0.28), metal=0.5, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.62, 0.42, 0.11), franjas="ninguna", techo=False),
+    "oro":          dict(pintura=(0.50, 0.33, 0.08), metal=0.8, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
+    "naranja_bronce": dict(pintura=(0.85, 0.22, 0.0), metal=0.1, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
+    "blanco_bronce": dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=False),
     "naranja":      dict(pintura=(0.85, 0.20, 0.0), metal=0.1, rin=(0.08, 0.08, 0.09), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
 }
 LIV = PLAN.get("livery") or ""
@@ -255,6 +261,8 @@ def mascara_pintura(nt, cfg):
     elif cfg.get("franjas") == "lateral":   # franja baja a lo largo del costado
         z = xyz.outputs["Z"]; x = xyz.outputs["X"]
         franja = op("MULTIPLY", op("MULTIPLY", banda(z, 0.27, 0.36), op("GREATER_THAN", any_, 0.45)), banda(x, B + 0.95, F - 1.05))
+    elif cfg.get("franjas") == "bajo":   # dos tonos: parte baja de otro color (estilo panda)
+        franja = op("LESS_THAN", xyz.outputs["Z"], H * 0.36)
     if cfg.get("techo"):   # techo negro brillante
         techo = op("MULTIPLY", op("GREATER_THAN", xyz.outputs["Z"], H - 0.2), op("GREATER_THAN", nrm.outputs["Z"], 0.25))
     return franja, techo
@@ -267,7 +275,9 @@ if LIV in LIVERIES:
             continue
         if m.name in pintura:
             color_fijo(p, cfg["pintura"], cfg["metal"], 0.28 if cfg["metal"] else 0.2)
-            p.inputs["Coat Weight"].default_value = 1.0; p.inputs["Coat Roughness"].default_value = 0.03
+            p.inputs["Coat Weight"].default_value = 0.0 if cfg.get("mate") else 1.0; p.inputs["Coat Roughness"].default_value = 0.03
+            if cfg.get("mate"):
+                p.inputs["Roughness"].default_value = 0.5
             nt = m.node_tree
             franja, techo = mascara_pintura(nt, cfg)
             sock = None; mk_total = None

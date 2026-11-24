@@ -22,7 +22,7 @@ on:
         description: "teal | calido | mono | vacío = al azar"
         default: ""
       livery:
-        description: "gt3_blanco | guards_red | miami_blue | gulf | negro_oro | verde_python | amarillo | rojo_blanco | morado | naranja | vacío = al azar"
+        description: "vacío = una de las versiones modificadas de ese coche (modelos.json estilos); o gt3_blanco | guards_red | miami_blue | gulf | negro_oro | verde_python | amarillo | rojo_blanco | morado | naranja | vacío = al azar"
         default: ""
 
 permissions:
@@ -47,7 +47,10 @@ jobs:
           [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
           echo "Música: $URL"
           curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
-          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}" "${{ inputs.livery }}"
+          LIV="${{ inputs.livery }}"
+          [ -z "$LIV" ] && LIV=$(python3 -c "import json,random;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(random.choice(m.get('${{ inputs.modelo }}',{}).get('estilos') or ['gt3_blanco']))")
+          echo "Livery: $LIV"
+          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}" "$LIV"
           PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
           shots = json.load(open("plan.json"))["shots"]
