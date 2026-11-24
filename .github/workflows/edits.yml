@@ -71,6 +71,8 @@ jobs:
             echo "Cielo: $H"
             curl -sfL "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/${H}_4k.hdr" -o m/cielo.hdr
             python -c "import json;p=json.load(open('plan.json'));p['hdri']='m/cielo.hdr';p['hdri_nombre']='$H';json.dump(p,open('plan.json','w'),indent=1)"
+          else
+            bash edits/bajar_estudio.sh m/estudio.hdr && python -c "import json;p=json.load(open('plan.json'));p['hdri_estudio']='m/estudio.hdr';json.dump(p,open('plan.json','w'),indent=1)" || true
           fi
       - uses: actions/upload-artifact@v4
         with: { name: plan, path: "plan.json\nmusica.mp3" }

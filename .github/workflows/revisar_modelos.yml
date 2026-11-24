@@ -46,7 +46,9 @@ jobs:
         run: |
           LIV="${{ inputs.livery }}"
           if [ "$LIV" = "variado" ]; then LIV=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print((m.get('${{ matrix.uid }}',{}).get('estilos') or ['gt3_blanco'])[0])"); fi
-          echo "{\"id\":\"${{ matrix.uid }}_$LIV\",\"livery\":\"$LIV\",\"fps\":30,\"shots\":[{\"name\":\"hero\",\"frames\":30},{\"name\":\"trasera\",\"frames\":30},{\"name\":\"perfil\",\"frames\":30},{\"name\":\"rueda\",\"frames\":30}]}" > p.json; cat p.json
+          echo "{\"id\":\"${{ matrix.uid }}_$LIV\",\"livery\":\"$LIV\",\"fps\":30,\"shots\":[{\"name\":\"hero\",\"frames\":30},{\"name\":\"trasera\",\"frames\":30},{\"name\":\"perfil\",\"frames\":30},{\"name\":\"rueda\",\"frames\":30}]}" > p.json
+          bash edits/bajar_estudio.sh m/estudio.hdr && python3 -c "import json;p=json.load(open('p.json'));p['hdri_estudio']='m/estudio.hdr';json.dump(p,open('p.json','w'))" || true
+          cat p.json
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ matrix.uid }}',{}).get('girar') else '')")
           for s in 0 1 2 3; do
             ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan p.json --shot $s --out out --still 2>&1 | grep -E "COCHE|LISTO|Error|rror|^MAT|PINTURA|APOYO" | tail -40

@@ -344,6 +344,16 @@ else:
     bg = wn.new("ShaderNodeBackground"); bg.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1)
     fill = wn.new("ShaderNodeBackground"); fill.inputs["Color"].default_value = (0.6, 0.62, 0.66, 1)
     fill.inputs["Strength"].default_value = 0.04
+    if PLAN.get("hdri_estudio") and os.path.exists(PLAN["hdri_estudio"]):
+        # reflejos reales: la pintura refleja un estudio fotográfico de verdad (softboxes, paredes, techo),
+        # pero la cámara sigue viendo negro. Sin esto la pintura se ve como plástico.
+        envs = wn.new("ShaderNodeTexEnvironment"); envs.image = bpy.data.images.load(PLAN["hdri_estudio"])
+        tcs = wn.new("ShaderNodeTexCoord"); mps = wn.new("ShaderNodeMapping")
+        mps.inputs["Rotation"].default_value[2] = math.radians(PLAN.get("hdri_rot", 0))
+        wl.new(tcs.outputs["Generated"], mps.inputs["Vector"]); wl.new(mps.outputs["Vector"], envs.inputs["Vector"])
+        wl.new(envs.outputs["Color"], fill.inputs["Color"])
+        fill.inputs["Strength"].default_value = PLAN.get("hdri_estudio_fuerza", 0.45)
+        print("HDRI estudio para reflejos:", PLAN["hdri_estudio"])
     lp = wn.new("ShaderNodeLightPath"); mix = wn.new("ShaderNodeMixShader")
     wl.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
     wl.new(fill.outputs["Background"], mix.inputs[1])   # relleno tenue para que nada quede 100% negro
