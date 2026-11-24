@@ -181,7 +181,7 @@ LIVERIES = {
     "gulf":         dict(pintura=(0.30, 0.58, 0.78), metal=0.0, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="racing", franja=(0.85, 0.22, 0.01), techo=False),
     "negro_oro":    dict(pintura=(0.008, 0.008, 0.009), metal=0.5, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.62, 0.42, 0.11), franjas="ninguna", techo=False),
     "verde_python": dict(pintura=(0.10, 0.42, 0.04), metal=0.15, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
-    "amarillo":     dict(pintura=(0.80, 0.52, 0.0), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.01, 0.01, 0.01), techo=False),
+    "amarillo":     dict(pintura=(0.85, 0.42, 0.0), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.01, 0.01, 0.01), techo=False),
     "rojo_blanco":  dict(pintura=(0.45, 0.01, 0.01), metal=0.2, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.82, 0.82, 0.82), techo=False),
     "morado":       dict(pintura=(0.12, 0.02, 0.30), metal=0.45, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="ninguna", techo=True),
     "panda":        dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="bajo", franja=(0.008, 0.008, 0.008), techo=False),
@@ -190,7 +190,7 @@ LIVERIES = {
     "oro":          dict(pintura=(0.50, 0.33, 0.08), metal=0.8, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
     "naranja_bronce": dict(pintura=(0.85, 0.22, 0.0), metal=0.1, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
     "blanco_bronce": dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=False),
-    "naranja":      dict(pintura=(0.85, 0.20, 0.0), metal=0.1, rin=(0.08, 0.08, 0.09), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
+    "naranja":      dict(pintura=(0.90, 0.13, 0.0), metal=0.1, rin=(0.08, 0.08, 0.09), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
 }
 LIV = PLAN.get("livery") or ""
 OVR = {}
