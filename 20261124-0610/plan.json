@@ -1,0 +1,213 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 33.205,
+ "tempo": 123.0,
+ "escenario": "estudio",
+ "color": "teal",
+ "exposure": 0.5,
+ "hdri_rot": 292,
+ "shots": [
+  {
+   "name": "rueda",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "abre",
+   "frames": 29,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.0,
+   "sacudida": 0.015,
+   "vel": 22.0
+  },
+  {
+   "name": "manejo_lado",
+   "frames": 59,
+   "fx": [
+    "flash",
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "empuje",
+   "frames": 15,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 15,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "trasera",
+   "frames": 59,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 29,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "frente",
+   "frames": 15,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 15,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "frente",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "manejo_frente",
+   "frames": 29,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "abre",
+   "frames": 29,
+   "fx": [],
+   "mov": 1.0,
+   "sacudida": 0.01,
+   "vel": 22.0
+  }
+ ]
+}
