@@ -61,7 +61,7 @@ jobs:
           test -s "$CAR" || { echo "No se pudo bajar el modelo"; exit 1; }
           echo "$CAR" > m/ruta.txt; ls -la m | head
           if grep -q '"escenario": "exterior"' plan.json; then
-            H=$(python -c "import random;print(random.choice(['wide_street_01','wide_street_02','driving_school','derelict_overpass','canary_wharf','docklands_02','empty_warehouse_01','autoshop_01','shanghai_bund','hansaplatz','rooftop_night','cobblestone_street_night']))")
+            H=$(python -c "import random;print(random.choice(['wide_street_01','wide_street_02','driving_school','derelict_overpass','canary_wharf','docklands_02','empty_warehouse_01','autoshop_01','shanghai_bund','hansaplatz','rooftop_night']))")
             echo "Cielo: $H"
             curl -sfL "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/${H}_4k.hdr" -o m/cielo.hdr
             python -c "import json;p=json.load(open('plan.json'));p['hdri']='m/cielo.hdr';p['hdri_nombre']='$H';json.dump(p,open('plan.json','w'),indent=1)"
