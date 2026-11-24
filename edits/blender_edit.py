@@ -163,6 +163,10 @@ for m in bpy.data.materials:
     if any(k in nm for k in ("paint", "body", "carpaint", "car_paint", "pintura", "exterior")):
         p.inputs["Coat Weight"].default_value = 1.0
         p.inputs["Coat Roughness"].default_value = 0.03
+        for l in list(p.inputs["Emission Color"].links):   # pintura nunca emite luz
+            m.node_tree.links.remove(l)
+        p.inputs["Emission Strength"].default_value = 0.0
+        continue
     es = p.inputs["Emission Strength"]
     ec = p.inputs["Emission Color"]
     emits = ec.is_linked or sum(ec.default_value[:3]) > 0.05
@@ -172,7 +176,7 @@ for m in bpy.data.materials:
     if any(k in nm for k in ("headl", "drl", "angel", "light_w", "lightwhite")):
         if not ec.is_linked:
             ec.default_value = (1, 0.96, 0.9, 1)
-        es.default_value = max(es.default_value, 15)
+        es.default_value = min(max(es.default_value, 6), 8)   # encendidos sin volverse una mancha blanca
     elif any(k in nm for k in ("tail", "brake", "stop", "calavera")):
         if not ec.is_linked:
             ec.default_value = (1, 0.05, 0.02, 1)
@@ -214,7 +218,9 @@ for o in meshes(objs):
             mt = o.material_slots[pg.material_index].material
             area[mt.name] = area.get(mt.name, 0) + pg.area * f
 for nm_, a_ in sorted(area.items(), key=lambda x: -x[1])[:25]:
-    print(f"MAT {a_:7.3f} m2  {nm_}")
+    _m = bpy.data.materials.get(nm_); _p = next((n for n in _m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if _m and _m.use_nodes else None
+    _e = f"emis={_p.inputs['Emission Strength'].default_value:.1f}{'(tex)' if _p.inputs['Emission Color'].is_linked else ''} rough={_p.inputs['Roughness'].default_value:.2f}{'(tex)' if _p.inputs['Roughness'].is_linked else ''} normal={'si' if _p.inputs['Normal'].is_linked else 'no'}" if _p else "sin principled"
+    print(f"MAT {a_:7.3f} m2  {nm_}  {_e}")
 
 import re
 def tiene(nm, ks):   # "rim" solo como palabra/prefijo (no "trim" ni "primary")
@@ -244,6 +250,10 @@ def color_fijo(p, col, metal, rough):
     p.inputs["Base Color"].default_value = (*col, 1)
     p.inputs["Metallic"].default_value = metal
     p.inputs["Roughness"].default_value = rough
+    # sin brillo propio: algunos modelos traen emisión horneada en la pintura y se ve plana como plástico
+    for l in list(p.inputs["Emission Color"].links):
+        nt.links.remove(l)
+    p.inputs["Emission Strength"].default_value = 0.0
 
 def mascara_pintura(nt, cfg):
     """devuelve un socket 0..1: 1 = franja/techo (color secundario), 0 = pintura"""
