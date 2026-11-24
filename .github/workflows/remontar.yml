@@ -1,0 +1,31 @@
+name: Remontar edit
+# Vuelve a montar un edit usando los pedazos ya renderizados de otro run (sin re-renderizar).
+on:
+  workflow_dispatch:
+    inputs:
+      run_id: { description: "ID del run de edits con las tomas", required: true }
+permissions: { contents: write, actions: read }
+jobs:
+  montar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { path: arte, pattern: "toma-*", merge-multiple: true, run-id: "${{ inputs.run_id }}", github-token: "${{ github.token }}" }
+      - uses: actions/download-artifact@v4
+        with: { path: arte, name: plan, run-id: "${{ inputs.run_id }}", github-token: "${{ github.token }}" }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - name: Montar
+        run: |
+          mkdir -p out && cp arte/plan.json out/
+          (cd arte && mkdir -p tomas && mv toma_*.mp4 tomas/ && bash ../edits/montar.sh plan.json tomas ../out/edit.mp4)
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: edit-final, path: out }
+      - name: Guardar en la rama renders
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
+          D=$(date -u +%Y%m%d-%H%M); mkdir -p "$D"; cp out/* "$D"/
+          git add "$D"; git commit -qm "render $D"; git push -q origin renders
+          echo "Guardado en renders/$D"
