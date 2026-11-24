@@ -21,6 +21,9 @@ on:
       color:
         description: "teal | calido | mono | vacío = al azar"
         default: ""
+      livery:
+        description: "gt3_blanco | guards_red | miami_blue | gulf | negro_oro | verde_python | amarillo | rojo_blanco | morado | naranja | vacío = al azar"
+        default: ""
 
 permissions:
   contents: write
@@ -44,7 +47,7 @@ jobs:
           [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
           echo "Música: $URL"
           curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
-          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}"
+          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}" "${{ inputs.livery }}"
           PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
           shots = json.load(open("plan.json"))["shots"]
@@ -98,7 +101,7 @@ jobs:
           FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ inputs.modelo }}',{}).get('frente','auto'))")
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ inputs.modelo }}',{}).get('girar') else '')")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
-            --car "$CAR" --front "$FRONT" $GIRAR --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
+            --car "$CAR" --uid "${{ inputs.modelo }}" --front "$FRONT" $GIRAR --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
           ls -la salida
       - uses: actions/upload-artifact@v4
         with: { name: "toma-${{ matrix.toma }}-${{ strategy.job-index }}", path: salida/ }

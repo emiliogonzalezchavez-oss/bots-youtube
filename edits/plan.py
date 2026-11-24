@@ -4,7 +4,7 @@
 - movimiento en cada toma (cámara más rápida, sacudida, coche "manejando")
 - flashes y golpes de zoom en los drops (se aplican al montar)
 - cierre con el mismo plano general del inicio (loop)
-Uso: python plan.py musica.mp3 plan.json [segundos] [escenario] [color]
+Uso: python plan.py musica.mp3 plan.json [segundos] [escenario] [color] [livery]
 """
 import json, random, sys
 import librosa
@@ -82,6 +82,8 @@ for kind, nb in patron:
 
 plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1),
         "escenario": ESC, "color": COLOR, "exposure": 0.5 if ESC == "estudio" else 0.0,
-        "hdri_rot": rnd.randint(0, 359), "shots": shots}
+        "hdri_rot": rnd.randint(0, 359), "shots": shots,
+        "livery": (sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else
+                   rnd.choice(["gt3_blanco", "guards_red", "miami_blue", "gulf", "negro_oro", "verde_python", "amarillo", "rojo_blanco", "morado", "naranja"]))}
 json.dump(plan, open(out, "w"), indent=1)
 print(json.dumps(plan))

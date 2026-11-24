@@ -25,6 +25,7 @@ ap.add_argument("--front", default="auto", help="+X -X +Y -Y o auto")
 ap.add_argument("--girar", action="store_true", help="girar 180° (frente detectado al revés)")
 ap.add_argument("--samples", type=int, default=128)
 ap.add_argument("--still", action="store_true", help="1 frame a resolución completa (revisión de calidad)")
+ap.add_argument("--uid", default="", help="uid de Sketchfab (para los overrides de materiales en modelos.json)")
 ap.add_argument("--rango", default="", help="frames a renderizar, ej. 13-24 (para repartir una toma en varios servidores)")
 A = ap.parse_args(argv)
 PLAN = json.load(open(A.plan))
@@ -170,6 +171,130 @@ for m in bpy.data.materials:
         if not ec.is_linked:
             ec.default_value = (1, 0.05, 0.02, 1)
         es.default_value = max(es.default_value, 10)
+
+# ------------------------------------------------------------------ decoración (livery)
+# Colores de fábrica reales + rines/calipers + franjas; nada de texto ni logos inventados.
+LIVERIES = {
+    "gt3_blanco":   dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.6, 0.01, 0.01), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
+    "guards_red":   dict(pintura=(0.50, 0.012, 0.008), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="ninguna", techo=False),
+    "miami_blue":   dict(pintura=(0.015, 0.22, 0.50), metal=0.25, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=True),
+    "gulf":         dict(pintura=(0.30, 0.58, 0.78), metal=0.0, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="racing", franja=(0.85, 0.22, 0.01), techo=False),
+    "negro_oro":    dict(pintura=(0.008, 0.008, 0.009), metal=0.5, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.62, 0.42, 0.11), franjas="ninguna", techo=False),
+    "verde_python": dict(pintura=(0.10, 0.42, 0.04), metal=0.15, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
+    "amarillo":     dict(pintura=(0.80, 0.52, 0.0), metal=0.0, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.01, 0.01, 0.01), techo=False),
+    "rojo_blanco":  dict(pintura=(0.45, 0.01, 0.01), metal=0.2, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.82, 0.82, 0.82), techo=False),
+    "morado":       dict(pintura=(0.12, 0.02, 0.30), metal=0.45, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="ninguna", techo=True),
+    "naranja":      dict(pintura=(0.85, 0.20, 0.0), metal=0.1, rin=(0.08, 0.08, 0.09), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="lateral", franja=(0.01, 0.01, 0.01), techo=True),
+}
+LIV = PLAN.get("livery") or ""
+OVR = {}
+try:
+    OVR = next((x.get("mats", {}) for x in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "modelos.json"))) if x["uid"] == A.uid), {})
+except Exception as e:
+    print("sin overrides", e)
+
+area = {}
+for o in meshes(objs):
+    sx, sy, sz = o.matrix_world.to_scale()
+    f = abs(sx * sy)
+    for pg in o.data.polygons:
+        if pg.material_index < len(o.material_slots) and o.material_slots[pg.material_index].material:
+            mt = o.material_slots[pg.material_index].material
+            area[mt.name] = area.get(mt.name, 0) + pg.area * f
+for nm_, a_ in sorted(area.items(), key=lambda x: -x[1])[:25]:
+    print(f"MAT {a_:7.3f} m2  {nm_}")
+
+def tiene(nm, ks):
+    return any(k in nm for k in ks)
+NO_PINTURA = ("glass", "window", "vidrio", "cristal", "tire", "tyre", "rubber", "llanta", "interior", "seat", "chrome", "light", "lamp", "plate",
+              "placa", "rim", "wheel", "brake", "caliper", "disc", "grill", "grille", "mesh", "carbon", "black", "trim", "badge", "logo", "emblem",
+              "exhaust", "mirror_glass", "dash", "leather", "fabric", "under", "chassis", "engine", "shadow", "decal", "lens")
+pintura = set(OVR.get("pintura", [])) or {m for m in area if tiene(m.lower(), ("paint", "carpaint", "car_paint", "pintura", "body", "exterior")) and not tiene(m.lower(), NO_PINTURA)}
+if not pintura and area:   # sin nombres útiles: el material más grande que no sea vidrio/llanta/etc.
+    cand = [m for m in sorted(area, key=lambda x: -area[x]) if not tiene(m.lower(), NO_PINTURA)]
+    pintura = set(cand[:1])
+rines = set(OVR.get("rin", [])) or {m for m in area if tiene(m.lower(), ("rim", "wheel", "rin_", "felge")) and not tiene(m.lower(), ("tire", "tyre", "rubber", "llanta", "brake", "caliper", "disc", "steer", "volante", "bolt", "nut"))}
+calipers = set(OVR.get("caliper", [])) or {m for m in area if tiene(m.lower(), ("caliper", "brake_c", "pinza", "bremssattel"))}
+print("PINTURA", sorted(pintura), "RINES", sorted(rines), "CALIPERS", sorted(calipers), "LIVERY", LIV)
+
+F, B = mx.x, mn.x
+ref = empty("RefMundo")   # coordenadas de mundo para las franjas (el coche ya está normalizado)
+
+def bsdf(m):
+    return next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if m.use_nodes else None
+
+def color_fijo(p, col, metal, rough):
+    nt = p.id_data
+    for k in ("Base Color", "Metallic", "Roughness"):
+        for l in list(p.inputs[k].links):
+            nt.links.remove(l)
+    p.inputs["Base Color"].default_value = (*col, 1)
+    p.inputs["Metallic"].default_value = metal
+    p.inputs["Roughness"].default_value = rough
+
+def mascara_pintura(nt, cfg):
+    """devuelve un socket 0..1: 1 = franja/techo (color secundario), 0 = pintura"""
+    N_ = nt.nodes; Lk = nt.links.new
+    tc = N_.new("ShaderNodeTexCoord"); tc.object = ref
+    xyz = N_.new("ShaderNodeSeparateXYZ"); Lk(tc.outputs["Object"], xyz.inputs[0])
+    geo = N_.new("ShaderNodeNewGeometry"); nrm = N_.new("ShaderNodeSeparateXYZ"); Lk(geo.outputs["Normal"], nrm.inputs[0])
+    def op(o, a, b=None, clamp=True):
+        n = N_.new("ShaderNodeMath"); n.operation = o; n.use_clamp = clamp
+        for i, v in enumerate((a, b)):
+            if v is None: continue
+            if isinstance(v, (int, float)): n.inputs[i].default_value = v
+            else: Lk(v, n.inputs[i])
+        return n.outputs[0]
+    def banda(v, lo, hi, s=0.006):   # 1 entre lo y hi con borde suave
+        return op("MULTIPLY", op("GREATER_THAN", v, lo), op("LESS_THAN", v, hi))
+    franja = techo = None
+    ay = op("ABSOLUTE", xyz.outputs["Y"], None, False)
+    any_ = op("ABSOLUTE", nrm.outputs["Y"], None, False)
+    if cfg.get("franjas") == "racing":   # dos franjas por el centro, cofre-techo-cajuela
+        franja = op("MULTIPLY", banda(ay, 0.06, 0.24), op("LESS_THAN", any_, 0.55))
+    elif cfg.get("franjas") == "lateral":   # franja baja a lo largo del costado
+        z = xyz.outputs["Z"]; x = xyz.outputs["X"]
+        franja = op("MULTIPLY", op("MULTIPLY", banda(z, 0.27, 0.36), op("GREATER_THAN", any_, 0.45)), banda(x, B + 0.95, F - 1.05))
+    if cfg.get("techo"):   # techo negro brillante
+        techo = op("MULTIPLY", op("GREATER_THAN", xyz.outputs["Z"], H - 0.2), op("GREATER_THAN", nrm.outputs["Z"], 0.25))
+    return franja, techo
+
+if LIV in LIVERIES:
+    cfg = LIVERIES[LIV]
+    for m in bpy.data.materials:
+        p = bsdf(m)
+        if not p:
+            continue
+        if m.name in pintura:
+            color_fijo(p, cfg["pintura"], cfg["metal"], 0.28 if cfg["metal"] else 0.2)
+            p.inputs["Coat Weight"].default_value = 1.0; p.inputs["Coat Roughness"].default_value = 0.03
+            nt = m.node_tree
+            franja, techo = mascara_pintura(nt, cfg)
+            sock = None; mk_total = None
+            for mk, col in ((franja, cfg.get("franja", (0.01, 0.01, 0.01))), (techo, (0.008, 0.008, 0.008))):
+                if mk is None:
+                    continue
+                mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+                nt.links.new(mk, mix.inputs["Factor"])
+                if sock is None: mix.inputs[6].default_value = (*cfg["pintura"], 1)
+                else: nt.links.new(sock, mix.inputs[6])
+                mix.inputs[7].default_value = (*col, 1)
+                sock = mix.outputs[2]
+                if mk_total is None: mk_total = mk
+                else:
+                    mxn = nt.nodes.new("ShaderNodeMath"); mxn.operation = "MAXIMUM"
+                    nt.links.new(mk_total, mxn.inputs[0]); nt.links.new(mk, mxn.inputs[1]); mk_total = mxn.outputs[0]
+            if sock is not None:
+                nt.links.new(sock, p.inputs["Base Color"])
+                if cfg["metal"]:   # franjas y techo sin metalizado
+                    inv = nt.nodes.new("ShaderNodeMath"); inv.operation = "SUBTRACT"; inv.inputs[0].default_value = 1.0
+                    nt.links.new(mk_total, inv.inputs[1])
+                    mm = nt.nodes.new("ShaderNodeMath"); mm.operation = "MULTIPLY"; mm.inputs[1].default_value = cfg["metal"]
+                    nt.links.new(inv.outputs[0], mm.inputs[0]); nt.links.new(mm.outputs[0], p.inputs["Metallic"])
+        elif m.name in rines:
+            color_fijo(p, cfg["rin"], cfg["rin_metal"], 0.22)
+        elif m.name in calipers:
+            color_fijo(p, cfg["caliper"], 0.0, 0.35)
 
 # ------------------------------------------------------------------ escenario
 ESC = PLAN.get("escenario", "estudio")       # estudio (fondo negro) | exterior (HDRI real visible)
