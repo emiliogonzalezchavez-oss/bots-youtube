@@ -392,7 +392,7 @@ if ESC == "exterior":
 def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)):
     ld = bpy.data.lights.new(name, "AREA")
     ld.shape = "RECTANGLE"; ld.size = size; ld.size_y = size_y
-    ld.energy, ld.color = energy * (0.25 if ESC == "exterior" else 1.0), color
+    ld.energy, ld.color = energy * (0.25 if ESC == "exterior" else 1.0) * PLAN.get("luz", 1.0), color
     ob = link(bpy.data.objects.new(name, ld))
     ob.location = loc
     ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
