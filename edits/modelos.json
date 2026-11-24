@@ -15,7 +15,12 @@
    "guards_red",
    "negro_oro"
   ],
-  "estilos_fuente": "991: GT3/GT3 RS en blanco con techo negro, Miami Blue, Python Green, Guards Red; rines negros o dorados"
+  "estilos_fuente": "991: GT3/GT3 RS en blanco con techo negro, Miami Blue, Python Green, Guards Red; rines negros o dorados",
+  "mats": {
+   "rin": [
+    "silver"
+   ]
+  }
  },
  {
   "uid": "8568d9d14a994b9cae59499f0dbed21e",
@@ -93,7 +98,7 @@
    "gt3_blanco",
    "negro_oro"
   ],
-  "estilos_fuente": "Supra MK4: naranja icónico, dorado con rines dorados (Smokey Nagata), blanco con rines negros"
+  "estilos_fuente": "GR Supra (A90/MK5) con kit: naranja, dorado con rines dorados, blanco con rines negros, negro con dorado"
  },
  {
   "uid": "a5737bf3cc9b4179a6e5ebe173ff70d9",
@@ -110,7 +115,16 @@
    "morado",
    "blanco_bronce"
   ],
-  "estilos_fuente": "AE86: panda blanco/negro con rines bronce estilo TE37, Solar Orange, morado Saitama"
+  "estilos_fuente": "AE86: panda blanco/negro con rines bronce estilo TE37, Solar Orange, morado Saitama",
+  "mats": {
+   "pintura": [
+    "Primary",
+    "Secondary"
+   ],
+   "rin": [
+    "RimMaterial"
+   ]
+  }
  },
  {
   "uid": "9b13e93711db460b99749ae95aea9764",

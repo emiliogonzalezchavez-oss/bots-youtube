@@ -185,7 +185,7 @@ LIVERIES = {
     "rojo_blanco":  dict(pintura=(0.45, 0.01, 0.01), metal=0.2, rin=(0.55, 0.56, 0.58), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="racing", franja=(0.82, 0.82, 0.82), techo=False),
     "morado":       dict(pintura=(0.12, 0.02, 0.30), metal=0.45, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.75, 0.55, 0.02), franjas="ninguna", techo=True),
     "panda":        dict(pintura=(0.80, 0.81, 0.82), metal=0.0, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.6, 0.01, 0.01), franjas="bajo", franja=(0.008, 0.008, 0.008), techo=False),
-    "negro_mate":   dict(pintura=(0.012, 0.012, 0.013), metal=0.0, mate=True, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=False),
+    "negro_mate":   dict(pintura=(0.006, 0.006, 0.007), metal=0.0, mate=True, rin=(0.015, 0.015, 0.015), rin_metal=0.3, caliper=(0.6, 0.01, 0.01), franjas="ninguna", techo=False),
     "morado_oro":   dict(pintura=(0.10, 0.015, 0.28), metal=0.5, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.62, 0.42, 0.11), franjas="ninguna", techo=False),
     "oro":          dict(pintura=(0.50, 0.33, 0.08), metal=0.8, rin=(0.62, 0.42, 0.11), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
     "naranja_bronce": dict(pintura=(0.85, 0.22, 0.0), metal=0.1, rin=(0.42, 0.26, 0.07), rin_metal=1.0, caliper=(0.01, 0.01, 0.01), franjas="ninguna", techo=False),
@@ -210,8 +210,9 @@ for o in meshes(objs):
 for nm_, a_ in sorted(area.items(), key=lambda x: -x[1])[:25]:
     print(f"MAT {a_:7.3f} m2  {nm_}")
 
-def tiene(nm, ks):
-    return any(k in nm for k in ks)
+import re
+def tiene(nm, ks):   # "rim" solo como palabra/prefijo (no "trim" ni "primary")
+    return any(re.search(r"(^|[^a-z])rim", nm) if k == "rim" else (k in nm) for k in ks)
 NO_PINTURA = ("glass", "window", "vidrio", "cristal", "tire", "tyre", "rubber", "llanta", "interior", "seat", "chrome", "light", "lamp", "plate",
               "placa", "rim", "wheel", "brake", "caliper", "disc", "grill", "grille", "mesh", "carbon", "black", "trim", "badge", "logo", "emblem",
               "exhaust", "mirror_glass", "dash", "leather", "fabric", "under", "chassis", "engine", "shadow", "decal", "lens")
@@ -277,7 +278,7 @@ if LIV in LIVERIES:
             color_fijo(p, cfg["pintura"], cfg["metal"], 0.28 if cfg["metal"] else 0.2)
             p.inputs["Coat Weight"].default_value = 0.0 if cfg.get("mate") else 1.0; p.inputs["Coat Roughness"].default_value = 0.03
             if cfg.get("mate"):
-                p.inputs["Roughness"].default_value = 0.5
+                p.inputs["Roughness"].default_value = 0.38
             nt = m.node_tree
             franja, techo = mascara_pintura(nt, cfg)
             sock = None; mk_total = None
@@ -551,7 +552,7 @@ r.use_motion_blur = True; r.motion_blur_shutter = 0.6 if manejo else 0.35
 r.resolution_x, r.resolution_y, r.resolution_percentage = 1080, 1920, 100
 vs = sc.view_settings
 vs.view_transform = "AgX"
-for look in ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Base Contrast"):
+for look in (("AgX - Punchy", "Punchy") if LIV else ()) + ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Base Contrast"):
     try:
         vs.look = look
         break
