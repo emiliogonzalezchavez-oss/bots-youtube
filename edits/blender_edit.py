@@ -385,7 +385,7 @@ softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("TiraDer", (-L * 0.55, -W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("Contra", (-L * 1.6, 0, 3.0), 3.0, 1.2, 380, (0, 0, 0.6))
-softbox("Frente", (L * 1.7, -W * 0.8, 1.2), 1.6, 0.9, 160, (0, 0, 0.6))
+softbox("Frente", (L * 1.7, -W * 0.8, 2.6), 1.6, 0.9, 160, (0, 0, 0.6))   # alto: su reflejo no se cuela bajo el coche
 
 # ------------------------------------------------------------------ ruedas que giran (tomas "manejando")
 def txt(o):
