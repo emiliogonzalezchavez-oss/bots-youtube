@@ -1,0 +1,44 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 12.632,
+ "tempo": 107.7,
+ "shots": [
+  {
+   "name": "trasera",
+   "frames": 134
+  },
+  {
+   "name": "faro",
+   "frames": 34
+  },
+  {
+   "name": "frente34",
+   "frames": 33
+  },
+  {
+   "name": "perfil",
+   "frames": 34
+  },
+  {
+   "name": "rueda",
+   "frames": 33
+  },
+  {
+   "name": "calavera",
+   "frames": 34
+  },
+  {
+   "name": "cenital",
+   "frames": 33
+  },
+  {
+   "name": "frente",
+   "frames": 34
+  },
+  {
+   "name": "faro",
+   "frames": 33
+  }
+ ]
+}
