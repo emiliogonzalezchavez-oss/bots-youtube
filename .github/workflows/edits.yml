@@ -15,6 +15,12 @@ on:
       segundos:
         description: "Duración del edit"
         default: "14"
+      escenario:
+        description: "estudio | exterior | vacío = al azar"
+        default: ""
+      color:
+        description: "teal | calido | mono | vacío = al azar"
+        default: ""
 
 permissions:
   contents: write
@@ -38,7 +44,7 @@ jobs:
           [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
           echo "Música: $URL"
           curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
-          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }}
+          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}"
           PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
           shots = json.load(open("plan.json"))["shots"]
@@ -54,6 +60,12 @@ jobs:
           CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m)
           test -s "$CAR" || { echo "No se pudo bajar el modelo"; exit 1; }
           echo "$CAR" > m/ruta.txt; ls -la m | head
+          if grep -q '"escenario": "exterior"' plan.json; then
+            H=$(python -c "import random;print(random.choice(['wide_street_01','wide_street_02','driving_school','derelict_overpass','canary_wharf','docklands_02','empty_warehouse_01','autoshop_01','shanghai_bund','hansaplatz','rooftop_night','cobblestone_street_night']))")
+            echo "Cielo: $H"
+            curl -sfL "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/${H}_4k.hdr" -o m/cielo.hdr
+            python -c "import json;p=json.load(open('plan.json'));p['hdri']='m/cielo.hdr';p['hdri_nombre']='$H';json.dump(p,open('plan.json','w'),indent=1)"
+          fi
       - uses: actions/upload-artifact@v4
         with: { name: plan, path: "plan.json\nmusica.mp3" }
       - uses: actions/upload-artifact@v4

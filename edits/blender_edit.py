@@ -171,28 +171,47 @@ for m in bpy.data.materials:
             ec.default_value = (1, 0.05, 0.02, 1)
         es.default_value = max(es.default_value, 10)
 
-# ------------------------------------------------------------------ estudio
-world = bpy.data.worlds.new("Estudio")
+# ------------------------------------------------------------------ escenario
+ESC = PLAN.get("escenario", "estudio")       # estudio (fondo negro) | exterior (HDRI real visible)
+TOMA_FX = SHOT.get("mov", 1.0)                # multiplicador de recorrido de cámara (más = más rápido)
+world = bpy.data.worlds.new("Mundo")
 sc.world = world
 world.use_nodes = True
 wn, wl = world.node_tree.nodes, world.node_tree.links
 wn.clear()
-bg = wn.new("ShaderNodeBackground"); bg.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1)
-fill = wn.new("ShaderNodeBackground"); fill.inputs["Color"].default_value = (0.6, 0.62, 0.66, 1)
-fill.inputs["Strength"].default_value = 0.04
-lp = wn.new("ShaderNodeLightPath"); mix = wn.new("ShaderNodeMixShader"); out = wn.new("ShaderNodeOutputWorld")
-wl.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
-wl.new(fill.outputs["Background"], mix.inputs[1])   # relleno tenue para que nada quede 100% negro
-wl.new(bg.outputs["Background"], mix.inputs[2])     # la cámara ve negro
-wl.new(mix.outputs["Shader"], out.inputs["Surface"])
+out = wn.new("ShaderNodeOutputWorld")
+if ESC == "exterior" and PLAN.get("hdri") and os.path.exists(PLAN["hdri"]):
+    tcw = wn.new("ShaderNodeTexCoord"); mp_ = wn.new("ShaderNodeMapping")
+    mp_.inputs["Rotation"].default_value[2] = math.radians(PLAN.get("hdri_rot", 0))
+    env = wn.new("ShaderNodeTexEnvironment"); env.image = bpy.data.images.load(PLAN["hdri"])
+    bgw = wn.new("ShaderNodeBackground"); bgw.inputs["Strength"].default_value = PLAN.get("hdri_fuerza", 1.0)
+    wl.new(tcw.outputs["Generated"], mp_.inputs["Vector"]); wl.new(mp_.outputs["Vector"], env.inputs["Vector"])
+    wl.new(env.outputs["Color"], bgw.inputs["Color"]); wl.new(bgw.outputs["Background"], out.inputs["Surface"])
+else:
+    ESC = "estudio"
+    bg = wn.new("ShaderNodeBackground"); bg.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1)
+    fill = wn.new("ShaderNodeBackground"); fill.inputs["Color"].default_value = (0.6, 0.62, 0.66, 1)
+    fill.inputs["Strength"].default_value = 0.04
+    lp = wn.new("ShaderNodeLightPath"); mix = wn.new("ShaderNodeMixShader")
+    wl.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
+    wl.new(fill.outputs["Background"], mix.inputs[1])   # relleno tenue para que nada quede 100% negro
+    wl.new(bg.outputs["Background"], mix.inputs[2])     # la cámara ve negro
+    wl.new(mix.outputs["Shader"], out.inputs["Surface"])
 
-# Piso: oscuro, semibrillante, se pierde a negro con la distancia (ciclorama infinito)
+# Piso: en estudio oscuro y satinado que se pierde a negro; en exterior atrapa-sombras invisible
 piso = bpy.data.materials.new("Piso"); piso.use_nodes = True
 nt = piso.node_tree; P = nt.nodes["Principled BSDF"]
 P.inputs["Base Color"].default_value = (0.010, 0.010, 0.011, 1)
 P.inputs["Roughness"].default_value = 0.5
 P.inputs["Specular IOR Level"].default_value = 0.22
-tc = nt.nodes.new("ShaderNodeTexCoord"); vl = nt.nodes.new("ShaderNodeVectorMath"); vl.operation = "LENGTH"
+tc = nt.nodes.new("ShaderNodeTexCoord")
+# textura sutil del piso que se desplaza en las tomas "manejando" (da sensación de velocidad en los reflejos)
+mpf = nt.nodes.new("ShaderNodeMapping"); nz = nt.nodes.new("ShaderNodeTexNoise")
+nz.inputs["Scale"].default_value = 1.6; nz.inputs["Detail"].default_value = 8
+rr = nt.nodes.new("ShaderNodeMapRange"); rr.inputs["To Min"].default_value = 0.38; rr.inputs["To Max"].default_value = 0.62
+nt.links.new(tc.outputs["Object"], mpf.inputs["Vector"]); nt.links.new(mpf.outputs["Vector"], nz.inputs["Vector"])
+nt.links.new(nz.outputs["Fac"], rr.inputs["Value"]); nt.links.new(rr.outputs["Result"], P.inputs["Roughness"])
+vl = nt.nodes.new("ShaderNodeVectorMath"); vl.operation = "LENGTH"
 mr = nt.nodes.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = 3; mr.inputs["From Max"].default_value = 10
 blk = nt.nodes.new("ShaderNodeBsdfDiffuse"); blk.inputs["Color"].default_value = (0, 0, 0, 1)
 ms = nt.nodes.new("ShaderNodeMixShader"); outm = nt.nodes["Material Output"]
@@ -200,14 +219,17 @@ nt.links.new(tc.outputs["Object"], vl.inputs[0]); nt.links.new(vl.outputs["Value
 nt.links.new(mr.outputs["Result"], ms.inputs["Fac"])
 nt.links.new(P.outputs["BSDF"], ms.inputs[1]); nt.links.new(blk.outputs["BSDF"], ms.inputs[2])
 nt.links.new(ms.outputs["Shader"], outm.inputs["Surface"])
-bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, 0))
-bpy.context.object.data.materials.append(piso)
+bpy.ops.mesh.primitive_plane_add(size=200 if ESC == "exterior" else 80, location=(0, 0, 0))
+suelo = bpy.context.object
+suelo.data.materials.append(piso)
+if ESC == "exterior":
+    suelo.is_shadow_catcher = True
 
 
 def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)):
     ld = bpy.data.lights.new(name, "AREA")
     ld.shape = "RECTANGLE"; ld.size = size; ld.size_y = size_y
-    ld.energy, ld.color = energy, color
+    ld.energy, ld.color = energy * (0.25 if ESC == "exterior" else 1.0), color
     ob = link(bpy.data.objects.new(name, ld))
     ob.location = loc
     ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
@@ -221,6 +243,62 @@ softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("TiraDer", (-L * 0.55, -W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("Contra", (-L * 1.6, 0, 2.2), 3.0, 1.2, 380, (0, 0, 0.6))
 softbox("Frente", (L * 1.7, -W * 0.8, 1.2), 1.6, 0.9, 160, (0, 0, 0.6))
+
+# ------------------------------------------------------------------ ruedas que giran (tomas "manejando")
+def txt(o):
+    return (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
+
+
+RUEDAS = []
+for o in meshes(objs):
+    tt_ = txt(o)
+    if any(k in tt_ for k in ("wheel", "tire", "tyre", "rim", "rueda", "llanta", "disc")) and \
+            not any(k in tt_ for k in ("caliper", "brake_c", "steer", "volante", "arch", "well", "fender", "cover", "spare")):
+        a, b = bbox([o]); d = b - a
+        if d.x < L * 0.3 and d.y < W * 0.45 and 0.2 < d.z < H * 0.75:
+            RUEDAS.append(o)
+
+
+def girar_ruedas(vel):
+    dist = vel * (N - 1) / FPS
+    for o in RUEDAS:
+        a, b = bbox([o]); c = (a + b) / 2; rad = max(0.2, (b.z - a.z) / 2)
+        piv = empty(o.name + "_giro", parent=car)
+        piv.matrix_world = Matrix.Translation(c)
+        bpy.context.view_layer.update()
+        mw = o.matrix_world.copy(); o.parent = piv; o.matrix_parent_inverse = Matrix(); o.matrix_world = mw
+        piv.rotation_euler.y = 0; piv.keyframe_insert("rotation_euler", frame=1)
+        piv.rotation_euler.y = dist / rad; piv.keyframe_insert("rotation_euler", frame=N)
+        for fc in piv.animation_data.action.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+
+
+def tiras_en_movimiento(vel):
+    """luces de techo que pasan hacia atrás: sus reflejos corren por la carrocería como si el coche avanzara"""
+    tira = bpy.data.materials.new("TiraLuz"); tira.use_nodes = True
+    pt = tira.node_tree.nodes["Principled BSDF"]
+    pt.inputs["Base Color"].default_value = (0, 0, 0, 1)
+    pt.inputs["Emission Color"].default_value = (1, 1, 1, 1); pt.inputs["Emission Strength"].default_value = 22
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, H + 2.6))
+    o = bpy.context.object; o.scale = (0.35, W * 2.6, 1)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    o.data.materials.append(tira); o.visible_camera = False
+    arr = o.modifiers.new("arr", "ARRAY"); arr.use_relative_offset = False; arr.use_constant_offset = True
+    arr.constant_offset_displace = (4.0, 0, 0); arr.count = 60
+    dist = vel * (N - 1) / FPS
+    o.location.x = 60; o.keyframe_insert("location", index=0, frame=1)
+    o.location.x = 60 - dist; o.keyframe_insert("location", index=0, frame=N)
+    mpf.inputs["Location"].default_value[0] = 0; mpf.inputs["Location"].keyframe_insert("default_value", frame=1)
+    mpf.inputs["Location"].default_value[0] = dist; mpf.inputs["Location"].keyframe_insert("default_value", frame=N)
+    for ob_ in (o,):
+        for fc in ob_.animation_data.action.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+    for fc in piso.node_tree.animation_data.action.fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = "LINEAR"
+
 
 # ------------------------------------------------------------------ cámara y tomas
 cd = bpy.data.cameras.new("Cam"); cam = link(bpy.data.objects.new("Cam", cd)); sc.camera = cam
@@ -241,7 +319,12 @@ CALAVERA = (B + 0.25, -Y * 0.72, Z * 0.58)
 RUEDA = (F - L * 0.2, -Y, Z * 0.27)
 
 
-def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8):
+def lerp(a, b, k):
+    return tuple(a[i] + (b[i] - a[i]) * k for i in range(3))
+
+
+def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8, ease=True):
+    c1 = lerp(c0, c1, TOMA_FX)   # mov>1 = recorrido más largo en el mismo tiempo = cámara más rápida
     for fr, cl, ml in ((1, c0, m0), (N, c1, m1)):
         cam.location = cl; cam.keyframe_insert("location", frame=fr)
         mira.location = ml; mira.keyframe_insert("location", frame=fr)
@@ -251,29 +334,66 @@ def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8):
     for ob in (cam, mira, cd):
         for fc in ob.animation_data.action.fcurves:
             for kp in fc.keyframe_points:
-                kp.interpolation = "BEZIER"
+                kp.interpolation = "BEZIER" if ease else "LINEAR"
                 kp.easing = "EASE_IN_OUT"
 
 
+def sacudida(amp):
+    """cámara en mano: ruido suave en la posición (amp en metros)"""
+    if amp <= 0:
+        return
+    for i in range(3):
+        fc = cam.animation_data.action.fcurves.find("location", index=i)
+        m = fc.modifiers.new("NOISE"); m.scale = 9 + 3 * i; m.strength = amp * (0.6 if i == 2 else 1); m.phase = 7 * i + A.shot * 3
+
+
+def orbita(r, z, a0, a1, mira_, lens, f):
+    """recorrido circular alrededor del coche (de a0 a a1 grados), con keyframes intermedios"""
+    k = 6
+    for j in range(k + 1):
+        a = math.radians(a0 + (a1 - a0) * TOMA_FX * j / k)
+        cam.location = (math.cos(a) * r, math.sin(a) * r, z); cam.keyframe_insert("location", frame=1 + round((N - 1) * j / k))
+    mira.location = mira_; mira.keyframe_insert("location", frame=1)
+    cd.lens = lens; cd.dof.aperture_fstop = f
+
+
 t = SHOT["name"]
-if t == "trasera":        # 3/4 trasero bajo, sube despacio, calaveras encendidas
+VEL = SHOT.get("vel", 22.0)
+manejo = t.startswith("manejo") or t == "rueda_gira"
+if manejo and ESC == "estudio":
+    girar_ruedas(VEL)
+    tiras_en_movimiento(VEL)
+if t == "trasera":        # 3/4 trasero bajo, sube, calaveras encendidas
     toma((B - 3.2, -Y - 2.6, 0.45), (B - 2.8, -Y - 2.2, 1.1), (B + 0.4, -Y * 0.4, 0.6), (B + 0.5, -Y * 0.3, 0.75), (55, 60), 3.5)
-elif t == "faro":         # detalle del faro, deslizamiento lento
+elif t == "faro":         # detalle del faro, deslizamiento
     toma((F + 1.5, -Y - 0.9, FARO[2] + 0.05), (F + 1.1, -Y - 1.4, FARO[2] + 0.12), FARO, (FARO[0] - 0.05, FARO[1], FARO[2]), (100, 100), 2.8)
-elif t == "frente34":     # 3/4 frontal desde arriba, empuje lento
+elif t == "frente34":     # 3/4 frontal desde arriba, empuje
     toma((F + 3.8, -Y - 3.4, 2.4), (F + 3.0, -Y - 2.6, 2.0), (L * 0.15, 0, 0.6), (L * 0.18, 0, 0.6), (50, 55), 4)
 elif t == "perfil":       # perfil lateral bajo, dolly a lo largo
     toma((F - 0.3, -Y - 4.6, 0.55), (B + 0.6, -Y - 4.6, 0.6), (F - 1.2, 0, 0.55), (B + 1.2, 0, 0.6), (70, 70), 3.5)
-elif t == "rueda":        # rin delantero, arco lento
+elif t == "rueda":        # rin delantero, arco
     toma((RUEDA[0] + 1.4, -Y - 1.3, 0.35), (RUEDA[0] - 0.3, -Y - 1.6, 0.5), RUEDA, RUEDA, (85, 85), 2.8)
 elif t == "calavera":     # detalle de calavera
     toma((B - 1.2, -Y - 1.0, CALAVERA[2] + 0.1), (B - 1.4, -Y - 0.4, CALAVERA[2] + 0.05), CALAVERA, CALAVERA, (100, 100), 2.8)
-elif t == "cenital":      # desde arriba girando despacio
+elif t == "cenital":      # desde arriba girando
     toma((0.4, -0.6, H + 6.5), (-0.4, 0.6, H + 6.0), (0, 0, 0.3), (0, 0, 0.3), (40, 45), 5.6)
 elif t == "frente":       # de frente, bajo, faros encendidos
     toma((F + 4.0, 0.6, 0.5), (F + 3.4, -0.5, 0.6), (F - 0.5, 0, 0.55), (F - 0.5, 0, 0.6), (70, 75), 3.5)
+elif t == "barrido":      # órbita rápida de 3/4 frontal a perfil (transición con movimiento)
+    orbita(L * 1.05, 0.7, -35, -100, (0, 0, 0.6), 35, 4)
+elif t == "empuje":       # empuje rápido hacia el frente (golpe)
+    toma((F + 6.0, -Y - 2.0, 0.6), (F + 2.2, -Y - 0.9, 0.55), (F - 0.6, 0, 0.55), (F - 0.6, 0, 0.55), (45, 60), 3.5, ease=False)
+elif t == "abre":         # plano general que se abre (inicio/cierre en loop)
+    toma((F + 2.0, -Y - 1.6, 0.5), (F + 5.5, -Y - 5.0, 1.6), (0.3, 0, 0.6), (0, 0, 0.6), (35, 32), 5.6)
+elif t == "manejo_lado":  # lado bajo, "manejando": ruedas giran y los reflejos corren
+    toma((0.2, -Y - 3.4, 0.45), (-0.4, -Y - 3.1, 0.5), (0, 0, 0.5), (-0.1, 0, 0.5), (40, 42), 3.5)
+elif t == "manejo_frente":  # frente bajo "manejando"
+    toma((F + 3.2, -Y - 1.2, 0.35), (F + 2.8, -Y - 0.6, 0.4), (F - 0.8, 0, 0.5), (F - 0.8, 0, 0.5), (32, 35), 3.5)
+elif t == "rueda_gira":   # rin girando de cerca
+    toma((RUEDA[0] + 0.9, -Y - 1.4, 0.3), (RUEDA[0] + 0.2, -Y - 1.5, 0.35), RUEDA, RUEDA, (70, 75), 2.8)
 else:                     # hero 3/4 frontal (still de revisión de modelo)
     toma((F + 3.4, -Y - 3.0, 1.1), (F + 3.3, -Y - 3.0, 1.1), (0.2, 0, 0.62), (0.2, 0, 0.62), (60, 60), 4)
+sacudida(SHOT.get("sacudida", 0.0))
 
 # ------------------------------------------------------------------ render
 r = sc.render
@@ -288,7 +408,7 @@ sc.cycles.max_bounces = 8; sc.cycles.glossy_bounces = 4; sc.cycles.transmission_
 sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
 sc.cycles.blur_glossy = 0.5
 r.use_persistent_data = True
-r.use_motion_blur = True; r.motion_blur_shutter = 0.3
+r.use_motion_blur = True; r.motion_blur_shutter = 0.6 if manejo else 0.35
 r.resolution_x, r.resolution_y, r.resolution_percentage = 1080, 1920, 100
 vs = sc.view_settings
 vs.view_transform = "AgX"
@@ -298,7 +418,7 @@ for look in ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Base C
         break
     except TypeError:
         pass
-vs.exposure = PLAN.get("exposure", 0.0)
+vs.exposure = PLAN.get("exposure", 0.5 if ESC == "estudio" else 0.0)
 
 os.makedirs(A.out, exist_ok=True)
 if A.still:
