@@ -324,7 +324,11 @@ def lerp(a, b, k):
 
 
 def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8, ease=True):
-    c1 = lerp(c0, c1, TOMA_FX)   # mov>1 = recorrido más largo en el mismo tiempo = cámara más rápida
+    k = TOMA_FX                  # mov>1 = recorrido más largo en el mismo tiempo = cámara más rápida
+    dentro = lambda p: B - 0.35 < p[0] < F + 0.35 and abs(p[1]) < Y + 0.35 and p[2] < H + 0.35
+    while k > 1.0 and dentro(lerp(c0, c1, k)):   # nunca meter la cámara dentro del coche (sale negro)
+        k -= 0.05
+    c1 = lerp(c0, c1, k)
     for fr, cl, ml in ((1, c0, m0), (N, c1, m1)):
         cam.location = cl; cam.keyframe_insert("location", frame=fr)
         mira.location = ml; mira.keyframe_insert("location", frame=fr)

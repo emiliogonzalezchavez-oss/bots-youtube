@@ -29,7 +29,7 @@ MUSIC=$(python3 -c "import json;print(json.load(open('$PLAN'))['music'])")
 START=$(python3 -c "import json;print(json.load(open('$PLAN'))['start'])")
 COLOR=$(python3 -c "import json;print(json.load(open('$PLAN')).get('color','neutro'))")
 case "$COLOR" in
-  teal)   GRADE="colorbalance=rs=-0.06:bs=0.10:rh=0.10:gh=0.02:bh=-0.08,eq=contrast=1.12:saturation=1.25" ;;
+  teal)   GRADE="colorbalance=rs=-0.08:gs=0.02:bs=0.10:rm=-0.05:gm=0.01:bm=0.05:rh=0.05:bh=-0.03,eq=contrast=1.12:saturation=1.20" ;;
   calido) GRADE="colorbalance=rm=0.05:bm=-0.04:rh=0.08:bh=-0.06,eq=contrast=1.10:brightness=0.03:saturation=1.15" ;;
   mono)   GRADE="hue=s=0,eq=contrast=1.20:brightness=0.02" ;;
   *)      GRADE="eq=contrast=1.08:saturation=1.12" ;;
