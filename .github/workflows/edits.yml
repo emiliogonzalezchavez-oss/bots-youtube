@@ -3,6 +3,8 @@ name: Edit de coche (Blender)
 on:
   schedule:
     - cron: "0 18 * * *"   # edit diario (12:00 hora México): coche aprobado al azar, render completo; bot-youtube lo sube a Clipazo
+  push:
+    paths: ["edits/disparar.txt"]   # cambiar este archivo = render completo de un coche al azar
   workflow_dispatch:
     inputs:
       modelo:
@@ -51,7 +53,7 @@ jobs:
         run: |
           M="${{ inputs.modelo }}"
           [ -z "$M" ] && M=$(python3 -c "import json,random;print(random.choice([x['uid'] for x in json.load(open('edits/modelos.json')) if x.get('aprobado')]))")
-          if [ "${{ github.event_name }}" = "schedule" ]; then P=false; S=true; else P="${{ inputs.preview }}"; S=false; fi
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then P=false; S=true; else P="${{ inputs.preview }}"; S=false; fi
           echo "Coche: $M  preview=$P  subir=$S"
           echo "MODELO=$M" >> $GITHUB_ENV; echo "PREV=$P" >> $GITHUB_ENV
           echo "modelo=$M" >> $GITHUB_OUTPUT; echo "preview=$P" >> $GITHUB_OUTPUT; echo "subir=$S" >> $GITHUB_OUTPUT
