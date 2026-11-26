@@ -1,11 +1,16 @@
 name: Edit de coche (Blender)
 
 on:
+  schedule:
+    - cron: "0 18 * * *"   # edit diario (12:00 hora México): coche aprobado al azar, render completo y se sube al canal
   workflow_dispatch:
     inputs:
+      subir:
+        description: "true = subir el edit final al canal de YouTube (solo con preview=false)"
+        default: "false"
       modelo:
-        description: "UID de Sketchfab de un modelo APROBADO (edits/modelos.json)"
-        required: true
+        description: "UID de Sketchfab de un modelo APROBADO (vacío = uno aprobado al azar)"
+        default: ""
       preview:
         description: "true = 1 frame por toma a resolución completa (revisión antes del render largo)"
         default: "true"
@@ -36,22 +41,36 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tomas: ${{ steps.p.outputs.tomas }}
+      modelo: ${{ steps.e.outputs.modelo }}
+      preview: ${{ steps.e.outputs.preview }}
+      subir: ${{ steps.e.outputs.subir }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
       - run: pip install -q librosa
+      - id: e
+        name: Elegir coche
+        run: |
+          M="${{ inputs.modelo }}"
+          [ -z "$M" ] && M=$(python3 -c "import json,random;print(random.choice([x['uid'] for x in json.load(open('edits/modelos.json')) if x.get('aprobado')]))")
+          if [ "${{ github.event_name }}" = "schedule" ]; then P=false; S=true; else P="${{ inputs.preview }}"; S="${{ inputs.subir }}"; fi
+          echo "Coche: $M  preview=$P  subir=$S"
+          echo "MODELO=$M" >> $GITHUB_ENV; echo "PREV=$P" >> $GITHUB_ENV
+          echo "modelo=$M" >> $GITHUB_OUTPUT; echo "preview=$P" >> $GITHUB_OUTPUT; echo "subir=$S" >> $GITHUB_OUTPUT
       - id: p
         run: |
           URL="${{ inputs.musica }}"
           [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
+          echo "$URL" > musica_url.txt
           echo "Música: $URL"
           curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
           LIV="${{ inputs.livery }}"
-          [ -z "$LIV" ] && LIV=$(python3 -c "import json,random;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(random.choice(m.get('${{ inputs.modelo }}',{}).get('estilos') or ['gt3_blanco']))")
+          [ -z "$LIV" ] && LIV=$(python3 -c "import json,random;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(random.choice(m.get('$MODELO',{}).get('estilos') or ['gt3_blanco']))")
           echo "Livery: $LIV"
-          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos }} "${{ inputs.escenario }}" "${{ inputs.color }}" "$LIV"
-          PREV="${{ inputs.preview }}" python - <<'PY' >> $GITHUB_OUTPUT
+          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos || '14' }} "${{ inputs.escenario }}" "${{ inputs.color }}" "$LIV"
+          python -c "import json;p=json.load(open('plan.json'));p['modelo_uid']='$MODELO';p['musica_url']=open('musica_url.txt').read().strip();json.dump(p,open('plan.json','w'),indent=1)"
+          python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
           shots = json.load(open("plan.json"))["shots"]
           if os.environ["PREV"] == "true":
@@ -63,7 +82,7 @@ jobs:
       - name: Bajar modelo (una sola vez)
         env: { SKETCHFAB_TOKEN: "${{ secrets.SKETCHFAB_TOKEN }}" }
         run: |
-          CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m)
+          CAR=$(bash edits/bajar_modelo.sh $MODELO m)
           test -s "$CAR" || { echo "No se pudo bajar el modelo"; exit 1; }
           echo "$CAR" > m/ruta.txt; ls -la m | head
           if grep -q '"escenario": "exterior"' plan.json; then
@@ -102,11 +121,11 @@ jobs:
       - run: echo "CAR=$(cat m/ruta.txt)" >> $GITHUB_ENV && test -s "$(cat m/ruta.txt)"
       - name: Render toma ${{ matrix.toma }} ${{ matrix.rango }}
         run: |
-          EXTRA=""; [ "${{ inputs.preview }}" = "true" ] && EXTRA="--still"; [ -n "${{ matrix.rango }}" ] && EXTRA="--rango ${{ matrix.rango }}"
-          FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ inputs.modelo }}',{}).get('frente','auto'))")
-          GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ inputs.modelo }}',{}).get('girar') else '')")
+          EXTRA=""; [ "${{ needs.plan.outputs.preview }}" = "true" ] && EXTRA="--still"; [ -n "${{ matrix.rango }}" ] && EXTRA="--rango ${{ matrix.rango }}"
+          FRONT=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(m.get('${{ needs.plan.outputs.modelo }}',{}).get('frente','auto'))")
+          GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ needs.plan.outputs.modelo }}',{}).get('girar') else '')")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --plan plan.json --shot ${{ matrix.toma }} \
-            --car "$CAR" --uid "${{ inputs.modelo }}" --front "$FRONT" $GIRAR --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
+            --car "$CAR" --uid "${{ needs.plan.outputs.modelo }}" --front "$FRONT" $GIRAR --out salida $EXTRA 2>&1 | grep -vE "^Fra:|Sample" | tail -40
           ls -la salida
       - uses: actions/upload-artifact@v4
         with: { name: "toma-${{ matrix.toma }}-${{ strategy.job-index }}", path: salida/ }
@@ -134,6 +153,16 @@ jobs:
           ls -la out
       - uses: actions/upload-artifact@v4
         with: { name: edit-final, path: out }
+      - name: Subir a YouTube
+        if: needs.plan.outputs.subir == 'true' && needs.plan.outputs.preview != 'true'
+        env:
+          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
+          TOKEN_CLIPAZO: ${{ secrets.TOKEN_CLIPAZO }}
+        run: |
+          test -s out/edit.mp4 || { echo "No hay edit.mp4 (alguna toma falló)"; exit 1; }
+          pip install -q google-api-python-client google-auth
+          python edits/publicar.py out/plan.json out/edit.mp4 out/edit.json
+          python edits/subir.py clipazo out/edit.json 2
       - name: Guardar en la rama renders
         run: |
           git config user.name "github-actions"; git config user.email "actions@github.com"
