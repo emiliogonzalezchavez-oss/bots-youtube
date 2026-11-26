@@ -1,0 +1,231 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 15.302,
+ "tempo": 89.1,
+ "escenario": "estudio",
+ "color": "calido",
+ "exposure": -0.5,
+ "hdri_rot": 272,
+ "shots": [
+  {
+   "name": "frente",
+   "frames": 7,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 7,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 7,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 7,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "empuje",
+   "frames": 6,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 6,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "abre",
+   "frames": 40,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.0,
+   "sacudida": 0.015,
+   "vel": 22.0
+  },
+  {
+   "name": "manejo_lado",
+   "frames": 81,
+   "fx": [
+    "flash",
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "empuje",
+   "frames": 20,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 20,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 4,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "trasera",
+   "frames": 81,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 40,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "frente",
+   "frames": 20,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 20,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 4,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "empuje",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  }
+ ],
+ "livery": "verde_python",
+ "modelo_uid": "2b509d1bce104224b147c81757f6f43a",
+ "musica_url": "https://cdn.pixabay.com/download/audio/2026/11/16/audio_c85b66b3f5.mp3",
+ "hdri_estudio": "m/estudio.hdr"
+}
