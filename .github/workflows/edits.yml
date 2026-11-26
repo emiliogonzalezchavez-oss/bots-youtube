@@ -2,12 +2,9 @@ name: Edit de coche (Blender)
 
 on:
   schedule:
-    - cron: "0 18 * * *"   # edit diario (12:00 hora México): coche aprobado al azar, render completo y se sube al canal
+    - cron: "0 18 * * *"   # edit diario (12:00 hora México): coche aprobado al azar, render completo; bot-youtube lo sube a Clipazo
   workflow_dispatch:
     inputs:
-      subir:
-        description: "true = subir el edit final al canal de YouTube (solo con preview=false)"
-        default: "false"
       modelo:
         description: "UID de Sketchfab de un modelo APROBADO (vacío = uno aprobado al azar)"
         default: ""
@@ -54,7 +51,7 @@ jobs:
         run: |
           M="${{ inputs.modelo }}"
           [ -z "$M" ] && M=$(python3 -c "import json,random;print(random.choice([x['uid'] for x in json.load(open('edits/modelos.json')) if x.get('aprobado')]))")
-          if [ "${{ github.event_name }}" = "schedule" ]; then P=false; S=true; else P="${{ inputs.preview }}"; S="${{ inputs.subir }}"; fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then P=false; S=true; else P="${{ inputs.preview }}"; S=false; fi
           echo "Coche: $M  preview=$P  subir=$S"
           echo "MODELO=$M" >> $GITHUB_ENV; echo "PREV=$P" >> $GITHUB_ENV
           echo "modelo=$M" >> $GITHUB_OUTPUT; echo "preview=$P" >> $GITHUB_OUTPUT; echo "subir=$S" >> $GITHUB_OUTPUT
@@ -153,16 +150,6 @@ jobs:
           ls -la out
       - uses: actions/upload-artifact@v4
         with: { name: edit-final, path: out }
-      - name: Subir a YouTube
-        if: needs.plan.outputs.subir == 'true' && needs.plan.outputs.preview != 'true'
-        env:
-          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
-          TOKEN_CLIPAZO: ${{ secrets.TOKEN_CLIPAZO }}
-        run: |
-          test -s out/edit.mp4 || { echo "No hay edit.mp4 (alguna toma falló)"; exit 1; }
-          pip install -q google-api-python-client google-auth
-          python edits/publicar.py out/plan.json out/edit.mp4 out/edit.json
-          python edits/subir.py clipazo out/edit.json 2
       - name: Guardar en la rama renders
         run: |
           git config user.name "github-actions"; git config user.email "actions@github.com"
