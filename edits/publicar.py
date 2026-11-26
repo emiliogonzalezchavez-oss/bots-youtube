@@ -10,11 +10,12 @@ coche = m.get("nombre", "Supercar")
 mu = musica.get(plan.get("musica_url"), {})
 emoji = random.choice(["🔥", "🏁", "😮‍💨", "⚡", "🖤"])
 marca = coche.split()[1] if coche[:4].isdigit() and len(coche.split()) > 1 else coche.split()[0]
-tags = [coche, marca, "car edit", "phonk", "cars", "car edits", "supercar", "shorts", "edit"]
+tags = [coche, marca, "car edit", "phonk", "funk", "cars", "car edits", "supercar", "shorts", "edit"]
 desc = (f"{coche} {emoji}\n\n🔔 Suscríbete para un edit nuevo cada día.\n\n"
         f"Modelo 3D: \"{coche}\" de {m.get('autor', '?')} (https://sketchfab.com/3d-models/{plan.get('modelo_uid', '')}), "
         f"licencia {m.get('licencia', '?')}. Render y edición propios.\n"
-        f"Música: {mu.get('nombre', 'phonk libre de derechos')} (Pixabay{', ' + mu['pagina'] if mu.get('pagina') else ''}).\n\n"
+        + (f"Song: {mu['nombre']}\nMusic provided by NoCopyrightSounds\nFree Download/Stream: {mu['pagina']}\n\n" if "ncs.io" in mu.get("pagina", "")
+           else f"Música: {mu.get('nombre', 'phonk libre de derechos')} ({mu.get('pagina', 'Pixabay')}).\n\n") +
         f"#{marca.lower()} #caredit #phonk #cars #shorts")
 info = {"ruta": sys.argv[2], "titulo": f"{coche} {emoji} #shorts"[:100], "descripcion": desc, "tags": tags}
 json.dump(info, open(sys.argv[3], "w"), ensure_ascii=False)

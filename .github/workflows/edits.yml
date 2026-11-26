@@ -60,10 +60,13 @@ jobs:
       - id: p
         run: |
           URL="${{ inputs.musica }}"
-          [ -z "$URL" ] && URL=$(python -c "import json,random;print(random.choice(json.load(open('edits/musica.json')))['mp3'])")
+          LISTA=$( [ -n "$URL" ] && echo "$URL"; python -c "import json,random;l=[x['mp3'] for x in json.load(open('edits/musica.json'))];random.shuffle(l);print('\n'.join(l))")
+          for URL in $LISTA; do   # canciones NCS virales (uso libre y monetizable); si una no baja, la siguiente
+            curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3 && [ $(stat -c%s musica.mp3) -gt 500000 ] && break
+          done
+          test -s musica.mp3 || { echo "No bajó ninguna canción"; exit 1; }
           echo "$URL" > musica_url.txt
           echo "Música: $URL"
-          curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
           LIV="${{ inputs.livery }}"
           [ -z "$LIV" ] && LIV=$(python3 -c "import json,random;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(random.choice(m.get('$MODELO',{}).get('estilos') or ['gt3_blanco']))")
           echo "Livery: $LIV"
