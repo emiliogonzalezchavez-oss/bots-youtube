@@ -548,8 +548,9 @@ def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8, ease=True):
     for fr, cl, ml in ((1, c0, m0), (N, c1, m1)):
         cam.location = cl; cam.keyframe_insert("location", frame=fr)
         mira.location = ml; mira.keyframe_insert("location", frame=fr)
-    cd.lens = lens[0]; cd.keyframe_insert("lens", frame=1)
-    cd.lens = lens[1]; cd.keyframe_insert("lens", frame=N)
+    lm = PLAN.get("lente_mult", 1.0)   # <1 = más abierto (p.ej. banner con el coche chico y el piso desvaneciéndose)
+    cd.lens = lens[0] * lm; cd.keyframe_insert("lens", frame=1)
+    cd.lens = lens[1] * lm; cd.keyframe_insert("lens", frame=N)
     cd.dof.aperture_fstop = f
     for ob in (cam, mira, cd):
         for fc in ob.animation_data.action.fcurves:
