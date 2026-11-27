@@ -418,7 +418,7 @@ if LIV in LIVERIES:
                     nt.links.new(inv.outputs[0], mm.inputs[0]); nt.links.new(mm.outputs[0], p.inputs["Metallic"])
         elif m.name in rines:
             oscuro = sum(cfg["rin"]) < 0.1
-            color_fijo(p, (0.045, 0.045, 0.05) if oscuro else cfg["rin"], 1.0 if oscuro else max(cfg["rin_metal"], 0.6), 0.16 if oscuro else 0.12)
+            color_fijo(p, (0.11, 0.11, 0.12) if oscuro else cfg["rin"], 1.0 if oscuro else max(cfg["rin_metal"], 0.6), 0.12)
             p.inputs["Coat Weight"].default_value = 1.0; p.inputs["Coat Roughness"].default_value = 0.03
         elif m.name in calipers:
             color_fijo(p, cfg["caliper"], 0.0, 0.35)
@@ -444,9 +444,9 @@ def pintura_real(m, p):
     L_(tc.outputs["Object"], vor.inputs["Vector"])
     sw = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.004, i_To_Min=1.0, i_To_Max=0.0)
     L_(vor.outputs["Distance"], sw.inputs["Value"])
-    alt = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); alt.inputs[1].default_value = 0.15   # peel + swirls como relieve
+    alt = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); alt.inputs[1].default_value = 0.35   # peel + swirls como relieve
     L_(sw.outputs["Result"], alt.inputs[0]); L_(peel.outputs["Fac"], alt.inputs[2])
-    bump = _n(nt, "ShaderNodeBump", i_Strength=0.025, i_Distance=0.0002)
+    bump = _n(nt, "ShaderNodeBump", i_Strength=0.06, i_Distance=0.0004)
     L_(alt.outputs[0], bump.inputs["Height"])
     L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
     # polvo en estribos/defensas (abajo de 35 cm): ahí la laca se ve un poco más opaca
@@ -458,6 +458,17 @@ def pintura_real(m, p):
     cr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.03, i_To_Max=0.22)
     L_(md.outputs[0], cr.inputs["Value"])
     salida = cr.outputs["Result"]
+    # película de polvo en superficies de arriba (cofre/techo) + motitas: la laca se apaga un poco en manchas
+    geo = _n(nt, "ShaderNodeNewGeometry"); sn = _n(nt, "ShaderNodeSeparateXYZ"); L_(geo.outputs["Normal"], sn.inputs[0])
+    arriba = _n(nt, "ShaderNodeMapRange", i_From_Min=0.5, i_From_Max=0.9, i_To_Min=0.0, i_To_Max=1.0); L_(sn.outputs["Z"], arriba.inputs["Value"])
+    pz = _n(nt, "ShaderNodeTexNoise", i_Scale=2.5, i_Detail=6.0); L_(tc.outputs["Object"], pz.inputs["Vector"])
+    pzm = _n(nt, "ShaderNodeMapRange", i_From_Min=0.45, i_From_Max=0.75, i_To_Min=0.0, i_To_Max=0.07); L_(pz.outputs["Fac"], pzm.inputs["Value"])
+    mot = _n(nt, "ShaderNodeTexVoronoi", i_Scale=900.0); L_(tc.outputs["Object"], mot.inputs["Vector"])
+    motm = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.06, i_To_Min=0.25, i_To_Max=0.0); L_(mot.outputs["Distance"], motm.inputs["Value"])
+    film = _n(nt, "ShaderNodeMath", operation="ADD"); L_(pzm.outputs["Result"], film.inputs[0]); L_(motm.outputs["Result"], film.inputs[1])
+    fa = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); L_(film.outputs[0], fa.inputs[0]); L_(arriba.outputs["Result"], fa.inputs[1])
+    tot = _n(nt, "ShaderNodeMath", operation="ADD"); L_(salida, tot.inputs[0]); L_(fa.outputs[0], tot.inputs[1])
+    salida = tot.outputs[0]
     if m.name in MASCARA_FRANJA:   # franjas negro brillante (satinado se veía gris plata con el HDRI)
         fm = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); fm.inputs[1].default_value = 0.06
         L_(MASCARA_FRANJA[m.name], fm.inputs[0])
@@ -493,13 +504,25 @@ def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
 
 for m in bpy.data.materials:
     p_ = bsdf(m)
-    if p_ and any(k in m.name.lower() for k in ("undercarriage", "underbody", "chassis", "bajos")):
+    es_hule_carroceria = p_ and "rubber" in m.name.lower() and not all(
+        any(k in o.name.lower() for k in ("tire", "tyre", "wheel", "llanta")) for o in meshes(objs) if any(sl.material == m for sl in o.material_slots))
+    if p_ and (es_hule_carroceria or any(k in m.name.lower() for k in ("undercarriage", "underbody", "chassis", "bajos"))):
         for l in list(p_.inputs["Base Color"].links):
             m.node_tree.links.remove(l)
         p_.inputs["Base Color"].default_value = (0.015, 0.015, 0.016, 1); p_.inputs["Roughness"].default_value = 0.6
         p_.inputs["Metallic"].default_value = 0.0   # los bajos del coche nunca se ven gris claro
     if p_ and "reflector" in m.name.lower() and not p_.inputs["Base Color"].is_linked:
         p_.inputs["Base Color"].default_value = (0.22, 0.22, 0.23, 1); p_.inputs["Roughness"].default_value = 0.18
+
+for o in meshes(objs):
+    if any(sl.material and sl.material.name in pintura for sl in o.material_slots):
+        for pg in o.data.polygons:
+            pg.use_smooth = True
+        wn = o.modifiers.new("NormalesPonderadas", "WEIGHTED_NORMAL"); wn.keep_sharp = True; wn.weight = 50
+        try:
+            wn.mode = "FACE_AREA_WITH_ANGLE"
+        except Exception:
+            pass
 
 K_VENT = ("glass", "window", "windshield", "windscreen", "vidrio", "cristal", "parabrisas")
 for m in bpy.data.materials:
