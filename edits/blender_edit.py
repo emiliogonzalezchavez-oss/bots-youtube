@@ -26,6 +26,7 @@ ap.add_argument("--girar", action="store_true", help="girar 180° (frente detect
 ap.add_argument("--samples", type=int, default=128)
 ap.add_argument("--still", action="store_true", help="1 frame a resolución completa (revisión de calidad)")
 ap.add_argument("--uid", default="", help="uid de Sketchfab (para los overrides de materiales en modelos.json)")
+ap.add_argument("--dump", action="store_true", help="solo lista materiales de luces/vidrios y sale")
 ap.add_argument("--rango", default="", help="frames a renderizar, ej. 13-24 (para repartir una toma en varios servidores)")
 A = ap.parse_args(argv)
 PLAN = json.load(open(A.plan))
@@ -181,6 +182,24 @@ for m in bpy.data.materials:
         if not ec.is_linked:
             ec.default_value = (1, 0.05, 0.02, 1)
         es.default_value = max(es.default_value, 10)
+
+if A.dump:
+    LUZK = ("light", "lamp", "lens", "glass", "led", "drl", "head", "tail", "brake", "stop", "bulb", "emit", "reflect", "chrome", "faro", "indicator", "turn", "signal", "fog", "cover", "clear", "red", "orange")
+    for o in meshes(objs):
+        for sl in o.material_slots:
+            mt = sl.material
+            if not mt or not any(k in (mt.name + " " + o.name).lower() for k in LUZK):
+                continue
+            pp = next((n for n in mt.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if mt.use_nodes else None
+            if not pp:
+                print(f"LUZ obj={o.name} mat={mt.name} sin principled"); continue
+            g = lambda k: pp.inputs[k]
+            bc = "tex" if g("Base Color").is_linked else ",".join(f"{c:.2f}" for c in g("Base Color").default_value[:3])
+            print(f"LUZ obj={o.name[:40]} mat={mt.name[:40]} base={bc} metal={g('Metallic').default_value:.2f} rough={g('Roughness').default_value:.2f} "
+                  f"trans={g('Transmission Weight').default_value:.2f} alpha={'tex' if g('Alpha').is_linked else round(g('Alpha').default_value,2)} "
+                  f"emis={'tex' if g('Emission Color').is_linked else ','.join(f'{c:.2f}' for c in g('Emission Color').default_value[:3])}x{g('Emission Strength').default_value:.1f} "
+                  f"blend={getattr(mt, 'blend_method', '?')} verts={len(o.data.vertices)}")
+    sys.exit(0)
 
 # ------------------------------------------------------------------ decoración (livery)
 # Colores de fábrica reales + rines/calipers + franjas; nada de texto ni logos inventados.

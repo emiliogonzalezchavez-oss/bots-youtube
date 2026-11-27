@@ -54,7 +54,10 @@ jobs:
           bash edits/bajar_estudio.sh m/estudio.hdr && python3 -c "import json;p=json.load(open('p.json'));p['hdri_estudio']='m/estudio.hdr';json.dump(p,open('p.json','w'))" || true
           cat p.json
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ matrix.uid }}',{}).get('girar') else '')")
-          if [ -n "$VARIANTES" ]; then
+          if [ "$VARIANTES" = "dump" ]; then
+            ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan p.json --shot 0 --out out --still --dump 2>&1 | grep -E "^LUZ|rror" | sort -u | head -150
+            mkdir -p out; echo dump > out/dump.txt
+          elif [ -n "$VARIANTES" ]; then
             python3 edits/variantes.py
             for f in v*.json; do
               ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan $f --shot 0 --out out --still 2>&1 | grep -E "LISTO|rror" | tail -5
