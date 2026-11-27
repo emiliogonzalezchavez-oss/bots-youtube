@@ -165,10 +165,10 @@ def aplastar_llantas():
         cy = (mw @ Vector(o.bound_box[0]).lerp(Vector(o.bound_box[6]), 0.5)).y
         for v in o.data.vertices:
             w = mw @ v.co
-            if w.z < 0.10:
+            if w.z < 0.12:
                 if w.z < 0.003:
                     w.z = 0.003                                    # parche plano pegado al piso
-                bulge = ((0.10 - max(w.z, 0.0)) / 0.10) ** 1.5 * 0.016   # costado abombado (hasta 1.6 cm)
+                bulge = ((0.12 - max(w.z, 0.0)) / 0.12) ** 1.5 * 0.026   # costado abombado (hasta 2.6 cm)
                 w.y += bulge if w.y > cy else -bulge
                 v.co = inv @ w
                 n += 1
@@ -368,7 +368,7 @@ def mascara_pintura(nt, cfg):
     ay = op("ABSOLUTE", xyz.outputs["Y"], None, False)
     any_ = op("ABSOLUTE", nrm.outputs["Y"], None, False)
     if cfg.get("franjas") == "racing":   # dos franjas por el centro, cofre-techo-cajuela
-        franja = op("MULTIPLY", banda(ay, 0.06, 0.24), op("LESS_THAN", any_, 0.55))
+        franja = op("MULTIPLY", banda(ay, 0.06, 0.24), op("LESS_THAN", any_, 0.85))
     elif cfg.get("franjas") == "lateral":   # franja baja a lo largo del costado
         z = xyz.outputs["Z"]; x = xyz.outputs["X"]
         franja = op("MULTIPLY", op("MULTIPLY", banda(z, 0.27, 0.36), op("GREATER_THAN", any_, 0.45)), banda(x, B + 0.95, F - 1.05))
@@ -378,6 +378,7 @@ def mascara_pintura(nt, cfg):
         techo = op("MULTIPLY", op("GREATER_THAN", xyz.outputs["Z"], H - 0.2), op("GREATER_THAN", nrm.outputs["Z"], 0.25))
     return franja, techo
 
+MASCARA_FRANJA = {}
 if LIV in LIVERIES:
     cfg = LIVERIES[LIV]
     for m in bpy.data.materials:
@@ -406,6 +407,7 @@ if LIV in LIVERIES:
                     mxn = nt.nodes.new("ShaderNodeMath"); mxn.operation = "MAXIMUM"
                     nt.links.new(mk_total, mxn.inputs[0]); nt.links.new(mk, mxn.inputs[1]); mk_total = mxn.outputs[0]
             if sock is not None:
+                MASCARA_FRANJA[m.name] = mk_total
                 nt.links.new(sock, p.inputs["Base Color"])
                 if cfg["metal"]:   # franjas y techo sin metalizado
                     inv = nt.nodes.new("ShaderNodeMath"); inv.operation = "SUBTRACT"; inv.inputs[0].default_value = 1.0
@@ -413,8 +415,9 @@ if LIV in LIVERIES:
                     mm = nt.nodes.new("ShaderNodeMath"); mm.operation = "MULTIPLY"; mm.inputs[1].default_value = cfg["metal"]
                     nt.links.new(inv.outputs[0], mm.inputs[0]); nt.links.new(mm.outputs[0], p.inputs["Metallic"])
         elif m.name in rines:
-            color_fijo(p, cfg["rin"], max(cfg["rin_metal"], 0.6), 0.12)
-            p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.05
+            oscuro = sum(cfg["rin"]) < 0.1
+            color_fijo(p, (0.045, 0.045, 0.05) if oscuro else cfg["rin"], 1.0 if oscuro else max(cfg["rin_metal"], 0.6), 0.16 if oscuro else 0.12)
+            p.inputs["Coat Weight"].default_value = 1.0; p.inputs["Coat Roughness"].default_value = 0.03
         elif m.name in calipers:
             color_fijo(p, cfg["caliper"], 0.0, 0.35)
 
@@ -451,7 +454,14 @@ def pintura_real(m, p):
     nz = _n(nt, "ShaderNodeTexNoise", i_Scale=7.0, i_Detail=8.0); L_(tc.outputs["Object"], nz.inputs["Vector"])
     md = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); L_(baja.outputs["Result"], md.inputs[0]); L_(nz.outputs["Fac"], md.inputs[1])
     cr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.03, i_To_Max=0.22)
-    L_(md.outputs[0], cr.inputs["Value"]); L_(cr.outputs["Result"], p.inputs["Coat Roughness"])
+    L_(md.outputs[0], cr.inputs["Value"])
+    salida = cr.outputs["Result"]
+    if m.name in MASCARA_FRANJA:   # franjas de vinil satinado: no reflejan como espejo (evita los bordes grises)
+        fm = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); fm.inputs[1].default_value = 0.32
+        L_(MASCARA_FRANJA[m.name], fm.inputs[0])
+        mxr = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(salida, mxr.inputs[0]); L_(fm.outputs[0], mxr.inputs[1])
+        salida = mxr.outputs[0]
+    L_(salida, p.inputs["Coat Roughness"])
     p.inputs["Coat Weight"].default_value = 1.0
     p.inputs["Coat IOR"].default_value = 1.5
     p.inputs["Specular IOR Level"].default_value = 0.12   # el brillo lo da la laca, no la base (quita la neblina gris)
@@ -478,6 +488,11 @@ def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
     if not rg.is_linked:
         rg.default_value = min(1.0, rg.default_value + rough_add)
 
+
+for m in bpy.data.materials:
+    p_ = bsdf(m)
+    if p_ and "reflector" in m.name.lower() and not p_.inputs["Base Color"].is_linked:
+        p_.inputs["Base Color"].default_value = (0.22, 0.22, 0.23, 1); p_.inputs["Roughness"].default_value = 0.18
 
 K_VENT = ("glass", "window", "windshield", "windscreen", "vidrio", "cristal", "parabrisas")
 for m in bpy.data.materials:
@@ -678,7 +693,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
         b2 = tn.nodes.new("ShaderNodeMath"); b2.operation = "ABSOLUTE"; L_(b.outputs[0], b2.inputs[0])
         c = tn.nodes.new("ShaderNodeMath"); c.operation = "SUBTRACT"; c.inputs[0].default_value = 1; L_(b2.outputs[0], c.inputs[1])
         return c.outputs[0]
-    fx_ = borde(sp.outputs["X"], 6.0); fy_ = borde(sp.outputs["Y"], 2.0)
+    fx_ = borde(sp.outputs["X"], 18.0); fy_ = borde(sp.outputs["Y"], 10.0)
     m1 = tn.nodes.new("ShaderNodeMath"); m1.operation = "MULTIPLY"; L_(fx_, m1.inputs[0]); L_(fy_, m1.inputs[1])
     sock = m1.outputs[0]
     if tiras > 1:   # varias tiras separadas por huecos oscuros (como un techo de tubos de luz)
@@ -837,6 +852,8 @@ def toma(c0, c1, m0, m1, lens=(85, 85), f=2.8, ease=True):
     while k > 1.0 and dentro(lerp(c0, c1, k)):   # nunca meter la cámara dentro del coche (sale negro)
         k -= 0.05
     c1 = lerp(c0, c1, k)
+    dz = PLAN.get("mira_dz", 0.0)   # mover el punto de mira (p.ej. banner: el coche sube en el cuadro sin estirar nada)
+    m0 = (m0[0], m0[1], m0[2] + dz); m1 = (m1[0], m1[1], m1[2] + dz)
     for fr, cl, ml in ((1, c0, m0), (N, c1, m1)):
         cam.location = cl; cam.keyframe_insert("location", frame=fr)
         mira.location = ml; mira.keyframe_insert("location", frame=fr)
@@ -877,7 +894,7 @@ if manejo and ESC == "estudio":
     girar_ruedas(VEL)
     tiras_en_movimiento(VEL)
 elif not manejo:
-    dirigir_ruedas(PLAN.get("direccion", 22))
+    dirigir_ruedas(PLAN.get("direccion", -24))
 if t == "trasera":        # 3/4 trasero bajo, sube, calaveras encendidas
     toma((B - 3.2, -Y - 2.6, 0.45), (B - 2.8, -Y - 2.2, 1.1), (B + 0.4, -Y * 0.4, 0.6), (B + 0.5, -Y * 0.3, 0.75), (55, 60), 3.5)
 elif t == "faro":         # detalle del faro, deslizamiento

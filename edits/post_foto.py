@@ -1,7 +1,7 @@
 """Acabado de foto real para los stills: aberración cromática radial, viñeteo, grano de sensor y EXIF de cámara.
 Uso: python3 post_foto.py foto1.jpg [foto2.jpg ...]   (sobrescribe cada JPG)
 """
-import sys, datetime
+import sys, datetime, io
 import numpy as np
 from PIL import Image
 try:
@@ -41,11 +41,28 @@ def acabado(ruta, seed=0):
     out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
     kw = {"quality": 93, "subsampling": 0}
     if piexif:
-        ahora = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
-        exif = {"0th": {piexif.ImageIFD.Make: b"SONY", piexif.ImageIFD.Model: b"ILCE-7RM4", piexif.ImageIFD.Software: b"ILCE-7RM4 v2.00"},
-                "Exif": {piexif.ExifIFD.DateTimeOriginal: ahora.encode(), piexif.ExifIFD.FNumber: (28, 10),
-                         piexif.ExifIFD.ExposureTime: (1, 125), piexif.ExifIFD.ISOSpeedRatings: 200,
-                         piexif.ExifIFD.FocalLength: (85, 1), piexif.ExifIFD.LensModel: b"FE 85mm F1.4 GM"}}
+        ahora = datetime.datetime.now()
+        f = ahora.strftime("%Y:%m:%d %H:%M:%S").encode()
+        f_toma = (ahora - datetime.timedelta(minutes=37)).strftime("%Y:%m:%d %H:%M:%S").encode()
+        mini = io.BytesIO(); t = out.copy(); t.thumbnail((160, 120)); t.save(mini, "JPEG", quality=80)
+        I, E = piexif.ImageIFD, piexif.ExifIFD
+        exif = {
+            "0th": {I.Make: b"SONY", I.Model: b"ILCE-7RM4", I.Orientation: 1, I.XResolution: (240, 1), I.YResolution: (240, 1),
+                    I.ResolutionUnit: 2, I.Software: b"Adobe Lightroom Classic 13.1 (Windows)", I.DateTime: f},
+            "Exif": {E.ExposureTime: (1, 125), E.FNumber: (28, 10), E.ExposureProgram: 1, E.ISOSpeedRatings: 200,
+                     E.SensitivityType: 2, E.RecommendedExposureIndex: 200, E.ExifVersion: b"0231",
+                     E.DateTimeOriginal: f_toma, E.DateTimeDigitized: f_toma, E.OffsetTime: b"+00:00",
+                     E.OffsetTimeOriginal: b"+00:00", E.OffsetTimeDigitized: b"+00:00",
+                     E.ShutterSpeedValue: (6965784, 1000000), E.ApertureValue: (2970854, 1000000),
+                     E.BrightnessValue: (-1, 100), E.ExposureBiasValue: (0, 10), E.MaxApertureValue: (970854, 1000000),
+                     E.MeteringMode: 5, E.LightSource: 0, E.Flash: 16, E.FocalLength: (85, 1),
+                     E.ColorSpace: 1, E.PixelXDimension: out.width, E.PixelYDimension: out.height,
+                     E.FileSource: b"\x03", E.SceneType: b"\x01", E.CustomRendered: 0, E.ExposureMode: 1,
+                     E.WhiteBalance: 1, E.DigitalZoomRatio: (1, 1), E.FocalLengthIn35mmFilm: 85, E.SceneCaptureType: 0,
+                     E.Contrast: 0, E.Saturation: 0, E.Sharpness: 0,
+                     E.LensSpecification: ((85, 1), (85, 1), (14, 10), (14, 10)), E.LensModel: b"FE 85mm F1.4 GM"},
+            "1st": {I.Compression: 6, I.XResolution: (72, 1), I.YResolution: (72, 1), I.ResolutionUnit: 2},
+            "thumbnail": mini.getvalue()}
         kw["exif"] = piexif.dump(exif)
     out.save(ruta, "JPEG", **kw)
     print("acabado", ruta)
