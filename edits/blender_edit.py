@@ -197,7 +197,7 @@ def luz_mat(m, p, nm):
     elif cover:
         es.default_value = 0.0
         if _rojo(p, nm) and not HAY_EMISOR_COLA:   # sin LEDs de calavera en el modelo: la mica roja brilla poquito
-            sin_tex(); ec.default_value = (1.0, 0.004, 0.002, 1); es.default_value = 2.0
+            sin_tex(); ec.default_value = (1.0, 0.0, 0.0, 1); es.default_value = 1.3   # más fuerte se va a rosa con AgX
     elif any(k in nm for k in K_COLA):   # LEDs de calavera
         if not ec.is_linked: ec.default_value = (1.0, 0.004, 0.002, 1)
         es.default_value = 4.0
