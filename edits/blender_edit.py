@@ -629,7 +629,7 @@ sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
 sc.cycles.blur_glossy = 0.5
 r.use_persistent_data = True
 r.use_motion_blur = True; r.motion_blur_shutter = 0.6 if manejo else 0.35
-r.resolution_x, r.resolution_y, r.resolution_percentage = 1080, 1920, 100
+r.resolution_x, r.resolution_y, r.resolution_percentage = *PLAN.get("res", (1080, 1920)), 100
 vs = sc.view_settings
 vs.view_transform = "AgX"
 for look in (("AgX - Punchy", "Punchy") if LIV else ()) + ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Base Contrast"):
