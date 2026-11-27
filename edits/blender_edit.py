@@ -153,6 +153,71 @@ mn, mx = bbox_robusto(objs)
 L, W, H = mx.x - mn.x, mx.y - mn.y, mx.z - mn.z
 print(f"COCHE L={L:.2f} W={W:.2f} H={H:.2f} frente={front} objetos={len(objs)}")
 
+# ---------------- luces del coche, como en uno real:
+#  - mica/cover/lente = vidrio transparente (se ve el proyector y el reflector cromado), NUNCA brilla entera
+#  - brillan solo los emisores (LED/foco/DRL); direccionales y reversa APAGADAS; marcos y carcasas nunca brillan
+#  - si el modelo no trae emisor de calavera, la mica roja brilla poquito (rojo puro, nada de rosa)
+K_COVER = ("cover", "lens", "glass", "lampcover", "refraction", "clear", "mica")
+K_LUZ = ("light", "lamp", "headl", "tail", "brake_l", "stop", "led", "bulb", "drl", "daylight", "angel", "blinker", "indicator", "faro", "calavera")
+K_DRL = ("daylight", "drl", "angel", "led_strip", "ledstrip")
+K_APAGADA = ("orange", "amber", "blinker", "indicator", "turn", "signal", "side_reflector", "reverse", "white_cover", "fog")
+K_NUNCA = ("frame", "housing", "trim", "chrome", "reflector", "reflec", "carcasa", "window", "windshield")
+K_COLA = ("tail", "brake_l", "stop", "rear_l", "calavera")
+
+def _transp(p):
+    return p.inputs["Transmission Weight"].default_value > 0.5 or (not p.inputs["Alpha"].is_linked and p.inputs["Alpha"].default_value < 0.6)
+
+def _rojo(p, nm):
+    bc = p.inputs["Base Color"].default_value
+    return "red" in nm or (not p.inputs["Base Color"].is_linked and bc[0] > 0.15 and bc[0] > 4 * bc[1])
+
+def _es_cola_emisor(m):
+    p = next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if m.use_nodes else None
+    nm = m.name.lower()
+    return bool(p) and any(k in nm for k in K_COLA) and not any(k in nm for k in K_COVER + K_NUNCA + K_APAGADA) and not _transp(p)
+
+HAY_EMISOR_COLA = any(_es_cola_emisor(m) for m in bpy.data.materials)
+
+def luz_mat(m, p, nm):
+    es, ec = p.inputs["Emission Strength"], p.inputs["Emission Color"]
+    if any(k in nm for k in ("rim", "wheel", "brake_disc", "caliper", "disc", "rin_", "rueda", "freno")) and "light" not in nm:
+        es.default_value = 0.0; return
+    if not any(k in nm for k in K_LUZ + ("lens", "lampcover", "refraction", "cover", "mica")):
+        return   # ventanas y demás vidrios no se tocan
+    cover = any(k in nm for k in K_COVER) or _transp(p)
+    drl = any(k in nm for k in K_DRL)
+    def sin_tex():
+        for l in list(ec.links): m.node_tree.links.remove(l)
+    # 1) cuánto brilla
+    if drl:   # tira DRL: difusor que brilla blanco frío
+        sin_tex(); ec.default_value = (0.92, 0.96, 1.0, 1); es.default_value = 5.0
+        if not p.inputs["Alpha"].is_linked: p.inputs["Alpha"].default_value = 1.0
+    elif any(k in nm for k in K_APAGADA + K_NUNCA):
+        es.default_value = 0.0
+    elif cover:
+        es.default_value = 0.0
+        if _rojo(p, nm) and not HAY_EMISOR_COLA:   # sin LEDs de calavera en el modelo: la mica roja brilla poquito
+            sin_tex(); ec.default_value = (1.0, 0.004, 0.002, 1); es.default_value = 2.0
+    elif any(k in nm for k in K_COLA):   # LEDs de calavera
+        if not ec.is_linked: ec.default_value = (1.0, 0.004, 0.002, 1)
+        es.default_value = 4.0
+    elif nm.endswith("lights") and p.inputs["Base Color"].is_linked:
+        es.default_value = 0.0   # atlas con todas las luces en una textura: no se puede separar faro/calavera -> apagado
+    else:   # emisor de faro (LED/proyector)
+        if not ec.is_linked: ec.default_value = (0.95, 0.97, 1.0, 1)
+        es.default_value = 4.0
+    # 2) las micas son vidrio físico: reflejan y dejan ver el interior (no fantasma semitransparente)
+    if cover and not drl and not p.inputs["Alpha"].is_linked:
+        bc = p.inputs["Base Color"]
+        if not bc.is_linked and sum(bc.default_value[:3]) < 0.3 and not any(k in nm for k in ("black", "balck", "tint", "smoke", "spoiler")):
+            bc.default_value = (1, 1, 1, 1)   # mica "negra" de exportación = en realidad transparente
+        p.inputs["Alpha"].default_value = 1.0
+        p.inputs["Transmission Weight"].default_value = 1.0
+        p.inputs["Roughness"].default_value = min(p.inputs["Roughness"].default_value, 0.05)
+        p.inputs["Metallic"].default_value = 0.0
+        p.inputs["IOR"].default_value = 1.5
+    print(f"LUZFIX {m.name}: emis={es.default_value} cover={cover} drl={drl}")
+
 # Pintura con laca (clearcoat) y luces del coche encendidas
 for m in bpy.data.materials:
     if not m.use_nodes:
@@ -168,38 +233,7 @@ for m in bpy.data.materials:
             m.node_tree.links.remove(l)
         p.inputs["Emission Strength"].default_value = 0.0
         continue
-    es = p.inputs["Emission Strength"]
-    ec = p.inputs["Emission Color"]
-    emits = ec.is_linked or sum(ec.default_value[:3]) > 0.05
-    if any(k in nm for k in ("rim", "wheel", "brake", "caliper", "disc", "rin", "rueda", "freno")):
-        es.default_value = 0.0   # rines/frenos nunca brillan
-        continue
-    if any(k in nm for k in ("headl", "drl", "angel", "light_w", "lightwhite")):
-        if not ec.is_linked:
-            ec.default_value = (1, 0.96, 0.9, 1)
-        es.default_value = min(max(es.default_value, 6), 8)   # encendidos sin volverse una mancha blanca
-    elif any(k in nm for k in ("tail", "brake", "stop", "calavera")):
-        if not ec.is_linked:
-            ec.default_value = (1, 0.05, 0.02, 1)
-        es.default_value = max(es.default_value, 10)
-
-if A.dump:
-    LUZK = ("light", "lamp", "lens", "glass", "led", "drl", "head", "tail", "brake", "stop", "bulb", "emit", "reflect", "chrome", "faro", "indicator", "turn", "signal", "fog", "cover", "clear", "red", "orange")
-    for o in meshes(objs):
-        for sl in o.material_slots:
-            mt = sl.material
-            if not mt or not any(k in (mt.name + " " + o.name).lower() for k in LUZK):
-                continue
-            pp = next((n for n in mt.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None) if mt.use_nodes else None
-            if not pp:
-                print(f"LUZ obj={o.name} mat={mt.name} sin principled"); continue
-            g = lambda k: pp.inputs[k]
-            bc = "tex" if g("Base Color").is_linked else ",".join(f"{c:.2f}" for c in g("Base Color").default_value[:3])
-            print(f"LUZ obj={o.name[:40]} mat={mt.name[:40]} base={bc} metal={g('Metallic').default_value:.2f} rough={g('Roughness').default_value:.2f} "
-                  f"trans={g('Transmission Weight').default_value:.2f} alpha={'tex' if g('Alpha').is_linked else round(g('Alpha').default_value,2)} "
-                  f"emis={'tex' if g('Emission Color').is_linked else ','.join(f'{c:.2f}' for c in g('Emission Color').default_value[:3])}x{g('Emission Strength').default_value:.1f} "
-                  f"blend={getattr(mt, 'blend_method', '?')} verts={len(o.data.vertices)}")
-    sys.exit(0)
+    luz_mat(m, p, nm)
 
 # ------------------------------------------------------------------ decoración (livery)
 # Colores de fábrica reales + rines/calipers + franjas; nada de texto ni logos inventados.

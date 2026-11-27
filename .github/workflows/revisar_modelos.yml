@@ -7,6 +7,9 @@ on:
         description: "UIDs de Sketchfab separados por coma"
         default: "d01b254483794de3819786d93e0e1ebf,8568d9d14a994b9cae59499f0dbed21e,b2303a552b444e5b8637fdf5169b41cb,2b509d1bce104224b147c81757f6f43a,b53782a00cc240a191d5d7d005af1423,b7616ec43ecf4ffd8ed810d94f15eea6,a5737bf3cc9b4179a6e5ebe173ff70d9,9b13e93711db460b99749ae95aea9764,e738eae819c34d19a31dd066c45e0f3d,7b142ea3376e4811a326256c59bbc7a2"
 
+      tomas:
+        description: "tomas a renderizar (separadas por coma)"
+        default: "hero,trasera,perfil,rueda"
       variantes:
         description: "JSON con overrides del plan para comparar (solo toma hero), ej. [{\"exposure\":0}]"
         default: ""
@@ -50,7 +53,8 @@ jobs:
         run: |
           LIV="${{ inputs.livery }}"
           if [ "$LIV" = "variado" ]; then LIV=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print((m.get('${{ matrix.uid }}',{}).get('estilos') or ['gt3_blanco'])[0])"); fi
-          echo "{\"id\":\"${{ matrix.uid }}_$LIV\",\"livery\":\"$LIV\",\"fps\":30,\"shots\":[{\"name\":\"hero\",\"frames\":30},{\"name\":\"trasera\",\"frames\":30},{\"name\":\"perfil\",\"frames\":30},{\"name\":\"rueda\",\"frames\":30}]}" > p.json
+          echo "{\"id\":\"${{ matrix.uid }}_$LIV\",\"livery\":\"$LIV\",\"fps\":30,\"shots\":[]}" > p.json
+          python3 -c "import json;p=json.load(open('p.json'));p['shots']=[{'name':t.strip(),'frames':30} for t in '${{ inputs.tomas }}'.split(',')];json.dump(p,open('p.json','w'))"
           bash edits/bajar_estudio.sh m/estudio.hdr && python3 -c "import json;p=json.load(open('p.json'));p['hdri_estudio']='m/estudio.hdr';json.dump(p,open('p.json','w'))" || true
           cat p.json
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ matrix.uid }}',{}).get('girar') else '')")
@@ -63,8 +67,8 @@ jobs:
               ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan $f --shot 0 --out out --still 2>&1 | grep -E "LISTO|rror" | tail -5
             done
           else
-            for s in 0 1 2 3; do
-              ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan p.json --shot $s --out out --still 2>&1 | grep -E "COCHE|LISTO|Error|rror|^MAT|PINTURA|APOYO" | tail -40
+            for s in $(python3 -c "import json;print(' '.join(str(i) for i in range(len(json.load(open('p.json'))['shots']))))"); do
+              ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan p.json --shot $s --out out --still 2>&1 | grep -E "COCHE|LISTO|Error|rror|^MAT|PINTURA|APOYO|LUZFIX" | tail -40
             done
           fi
           ls -la out
