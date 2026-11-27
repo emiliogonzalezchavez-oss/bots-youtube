@@ -423,15 +423,15 @@ def _n(nt, tipo, **kw):
 def pintura_real(m, p):
     """orange peel (piel de naranja) en la laca + micro-rayones/swirls que solo se ven en los brillos"""
     nt = m.node_tree; L_ = nt.links.new
-    tc = _n(nt, "ShaderNodeTexCoord")
-    peel = _n(nt, "ShaderNodeTexNoise", i_Scale=900.0, i_Detail=2.0, i_Roughness=0.5)
+    tc = _n(nt, "ShaderNodeTexCoord", object=ref)   # metros reales (el objeto importado puede estar en cm)
+    peel = _n(nt, "ShaderNodeTexNoise", i_Scale=420.0, i_Detail=1.0, i_Roughness=0.5)
     L_(tc.outputs["Object"], peel.inputs["Vector"])
-    bump = _n(nt, "ShaderNodeBump", i_Strength=0.035, i_Distance=0.0004)
+    bump = _n(nt, "ShaderNodeBump", i_Strength=0.02, i_Distance=0.0002)
     L_(peel.outputs["Fac"], bump.inputs["Height"])
     L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
-    vor = _n(nt, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", i_Scale=180.0)
+    vor = _n(nt, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", i_Scale=60.0)
     L_(tc.outputs["Object"], vor.inputs["Vector"])
-    ray = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.015, i_To_Min=0.10, i_To_Max=0.025)
+    ray = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.006, i_To_Min=0.07, i_To_Max=0.02)
     L_(vor.outputs["Distance"], ray.inputs["Value"])
     L_(ray.outputs["Result"], p.inputs["Coat Roughness"])
     p.inputs["Coat Weight"].default_value = 1.0
@@ -440,7 +440,7 @@ def pintura_real(m, p):
 def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
     """mezcla polvo/brake dust en manchas suaves"""
     nt = m.node_tree; L_ = nt.links.new
-    tc = _n(nt, "ShaderNodeTexCoord")
+    tc = _n(nt, "ShaderNodeTexCoord", object=ref)
     nz = _n(nt, "ShaderNodeTexNoise", i_Scale=escala, i_Detail=6.0)
     L_(tc.outputs["Object"], nz.inputs["Vector"])
     mr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.42, i_From_Max=0.7, i_To_Min=0.0, i_To_Max=cantidad)
@@ -553,10 +553,10 @@ mx_ao = nt.nodes.new("ShaderNodeMath"); mx_ao.operation = "MAXIMUM"
 nt.links.new(inv_ao.outputs[0], mx_ao.inputs[0]); nt.links.new(mr.outputs["Result"], mx_ao.inputs[1])
 nt.links.new(mx_ao.outputs[0], ms.inputs["Fac"])
 # manchas/huellas cerca del coche: zonas más mate en el piso pulido
-smg = nt.nodes.new("ShaderNodeTexNoise"); smg.inputs["Scale"].default_value = 4.0; smg.inputs["Detail"].default_value = 10
+smg = nt.nodes.new("ShaderNodeTexNoise"); smg.inputs["Scale"].default_value = 1.2; smg.inputs["Detail"].default_value = 10
 nt.links.new(tc.outputs["Object"], smg.inputs["Vector"])
 smr = nt.nodes.new("ShaderNodeMapRange"); smr.inputs["From Min"].default_value = 0.55; smr.inputs["From Max"].default_value = 0.75
-smr.inputs["To Min"].default_value = 0.0; smr.inputs["To Max"].default_value = 0.35
+smr.inputs["To Min"].default_value = 0.0; smr.inputs["To Max"].default_value = 0.09
 nt.links.new(smg.outputs["Fac"], smr.inputs["Value"])
 near = nt.nodes.new("ShaderNodeMapRange"); near.inputs["From Min"].default_value = 2.0; near.inputs["From Max"].default_value = 4.5
 near.inputs["To Min"].default_value = 1.0; near.inputs["To Max"].default_value = 0.0
@@ -566,7 +566,7 @@ nt.links.new(smr.outputs["Result"], smm.inputs[0]); nt.links.new(near.outputs["R
 rsum = nt.nodes.new("ShaderNodeMath"); rsum.operation = "ADD"
 nt.links.new(rr.outputs["Result"], rsum.inputs[0]); nt.links.new(smm.outputs[0], rsum.inputs[1])
 nt.links.new(rsum.outputs[0], P.inputs["Roughness"])
-P.inputs["Specular IOR Level"].default_value = 0.38
+P.inputs["Specular IOR Level"].default_value = 0.3
 
 
 def ciclorama(R0=7.0, Rc=4.5, Hw=14.0, seg=128):
@@ -651,7 +651,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
         st = borde(fr.outputs[0], 8.0)
         m2 = tn.nodes.new("ShaderNodeMath"); m2.operation = "MULTIPLY"; L_(sock, m2.inputs[0]); L_(st, m2.inputs[1]); sock = m2.outputs[0]
     k_ = tn.nodes.new("ShaderNodeMath"); k_.operation = "MULTIPLY"
-    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 0.9   # misma brillantez que la luz de área
+    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 0.6   # misma brillantez que la luz de área
     L_(sock, k_.inputs[0]); L_(k_.outputs[0], em.inputs["Strength"])
     em.inputs["Color"].default_value = (*color, 1)
     L_(em.outputs["Emission"], o_.inputs["Surface"])
@@ -669,7 +669,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
 PLAN.setdefault("tiras_Cenital", 3)
 softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 # luz tenue dentro de la cabina: por las ventanas se distingue el volante y los asientos
-_li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 18 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.35
+_li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 4 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.6
 _lo = link(bpy.data.objects.new("Cabina", _li)); _lo.location = ((mn.x + mx.x) / 2 - L * 0.08, 0, H * 0.7)
 _lo.visible_glossy = False; _lo.visible_camera = False
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
@@ -717,7 +717,7 @@ def dirigir_ruedas(grados):
         bpy.context.view_layer.update()
         for o in obs + extra:
             _reparent(o, piv)
-        piv.rotation_euler.z = math.radians(grados)
+        piv.rotation_euler.z += math.radians(grados)   # += : conserva la compensación de giro del coche
     bpy.context.view_layer.update()
     print("DIRECCION", grados, "grados,", len(grupos), "ruedas")
 
