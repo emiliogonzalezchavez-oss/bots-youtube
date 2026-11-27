@@ -72,6 +72,10 @@ jobs:
             done
           fi
           ls -la out
+      - name: Acabado de foto (grano, aberración, viñeteo, EXIF)
+        run: |
+          pip install -q pillow numpy piexif
+          ls out/*.jpg >/dev/null 2>&1 && python3 edits/post_foto.py out/*.jpg || true
       - uses: actions/upload-artifact@v4
         with: { name: "still-${{ matrix.uid }}", path: out/ }
 

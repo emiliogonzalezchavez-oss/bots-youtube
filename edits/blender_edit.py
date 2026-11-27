@@ -146,9 +146,42 @@ mn, mx = bbox_robusto(objs)
 _ll = [o for o in meshes(objs) if any(k in (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
                                       for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen", "wheel"))]
 _zl = min((o.matrix_world @ v.co).z for o in _ll for v in o.data.vertices) if _ll else bbox(objs)[0].z
-car.location.z -= _zl + 0.012
+car.location.z -= _zl + 0.018
 print(f"APOYO llantas={len(_ll)} z_llanta={_zl:.3f} z_min_total={bbox(objs)[0].z:.3f}")
 bpy.context.view_layer.update()
+MANEJO_SHOT = SHOT["name"].startswith("manejo") or SHOT["name"] == "rueda_gira"
+
+
+def aplastar_llantas():
+    """llanta con peso: la parte que toca se aplana (parche de contacto) y el costado se abomba un poco"""
+    n = 0
+    for o in _ll:
+        nm = txt_(o)
+        if not any(k in nm for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen")):
+            continue
+        if o.data.users > 1:
+            o.data = o.data.copy()
+        mw = o.matrix_world; inv = mw.inverted()
+        cy = (mw @ Vector(o.bound_box[0]).lerp(Vector(o.bound_box[6]), 0.5)).y
+        for v in o.data.vertices:
+            w = mw @ v.co
+            if w.z < 0.075:
+                if w.z < 0.0015:
+                    w.z = 0.0015                                   # parche plano pegado al piso
+                bulge = (0.075 - max(w.z, 0.0)) / 0.075 * 0.007     # costado abombado (hasta 7 mm)
+                w.y += bulge if w.y > cy else -bulge
+                v.co = inv @ w
+                n += 1
+    print("LLANTAS aplastadas, vertices:", n)
+
+
+def txt_(o):
+    return (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
+
+
+if not MANEJO_SHOT:
+    aplastar_llantas()
+    bpy.context.view_layer.update()
 mn, mx = bbox_robusto(objs)
 L, W, H = mx.x - mn.x, mx.y - mn.y, mx.z - mn.z
 print(f"COCHE L={L:.2f} W={W:.2f} H={H:.2f} frente={front} objetos={len(objs)}")
@@ -376,6 +409,83 @@ if LIV in LIVERIES:
         elif m.name in calipers:
             color_fijo(p, cfg["caliper"], 0.0, 0.35)
 
+# ------------------------------------------------------------------ realismo de materiales
+def _n(nt, tipo, **kw):
+    n = nt.nodes.new(tipo)
+    for k, v in kw.items():
+        if k.startswith("i_"):
+            n.inputs[k[2:].replace("_", " ")].default_value = v
+        else:
+            setattr(n, k, v)
+    return n
+
+
+def pintura_real(m, p):
+    """orange peel (piel de naranja) en la laca + micro-rayones/swirls que solo se ven en los brillos"""
+    nt = m.node_tree; L_ = nt.links.new
+    tc = _n(nt, "ShaderNodeTexCoord")
+    peel = _n(nt, "ShaderNodeTexNoise", i_Scale=900.0, i_Detail=2.0, i_Roughness=0.5)
+    L_(tc.outputs["Object"], peel.inputs["Vector"])
+    bump = _n(nt, "ShaderNodeBump", i_Strength=0.035, i_Distance=0.0004)
+    L_(peel.outputs["Fac"], bump.inputs["Height"])
+    L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
+    vor = _n(nt, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", i_Scale=180.0)
+    L_(tc.outputs["Object"], vor.inputs["Vector"])
+    ray = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.015, i_To_Min=0.10, i_To_Max=0.025)
+    L_(vor.outputs["Distance"], ray.inputs["Value"])
+    L_(ray.outputs["Result"], p.inputs["Coat Roughness"])
+    p.inputs["Coat Weight"].default_value = 1.0
+
+
+def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
+    """mezcla polvo/brake dust en manchas suaves"""
+    nt = m.node_tree; L_ = nt.links.new
+    tc = _n(nt, "ShaderNodeTexCoord")
+    nz = _n(nt, "ShaderNodeTexNoise", i_Scale=escala, i_Detail=6.0)
+    L_(tc.outputs["Object"], nz.inputs["Vector"])
+    mr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.42, i_From_Max=0.7, i_To_Min=0.0, i_To_Max=cantidad)
+    L_(nz.outputs["Fac"], mr.inputs["Value"])
+    mix = _n(nt, "ShaderNodeMix", data_type="RGBA")
+    L_(mr.outputs["Result"], mix.inputs["Factor"])
+    bc = p.inputs["Base Color"]
+    if bc.is_linked:
+        L_(bc.links[0].from_socket, mix.inputs[6])
+    else:
+        mix.inputs[6].default_value = bc.default_value
+    mix.inputs[7].default_value = (*color, 1)
+    L_(mix.outputs[2], bc)
+    rg = p.inputs["Roughness"]
+    if not rg.is_linked:
+        rg.default_value = min(1.0, rg.default_value + rough_add)
+
+
+K_VENT = ("glass", "window", "windshield", "windscreen", "vidrio", "cristal", "parabrisas")
+for m in bpy.data.materials:
+    p = bsdf(m)
+    if not p:
+        continue
+    nm = m.name.lower()
+    es_pintura = m.name in pintura or (any(k in nm for k in ("paint", "carpaint", "car_paint", "pintura")) and not tiene(nm, NO_PINTURA))
+    if es_pintura:
+        pintura_real(m, p)
+    elif any(k in nm for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen")) and not tiene(nm, ("rim",)):
+        ensuciar(m, p, (0.20, 0.18, 0.15), 0.35, 0.15, 9.0)          # polvo gris en la goma
+    elif m.name in rines or (tiene(nm, ("rim", "wheel")) and not any(k in nm for k in ("tire", "tyre", "rubber"))):
+        ensuciar(m, p, (0.09, 0.075, 0.06), 0.45, 0.12, 14.0)        # brake dust en los rines
+    elif any(k in nm for k in ("disc", "rotor")):
+        ensuciar(m, p, (0.12, 0.07, 0.04), 0.5, 0.2, 20.0)           # discos con óxido ligero
+    elif any(k in nm for k in K_VENT) and not any(k in nm for k in K_LUZ):
+        # ventanas de vidrio real: se ve el volante y los asientos (antes casi negras/espejo)
+        oscuro = any(k in nm for k in ("tint", "black", "balck", "dark", "smoke"))
+        for k_ in ("Base Color", "Alpha", "Metallic", "Transmission Weight", "Roughness"):
+            for l in list(p.inputs[k_].links):
+                m.node_tree.links.remove(l)
+        p.inputs["Base Color"].default_value = (0.30, 0.32, 0.33, 1) if oscuro else (0.80, 0.83, 0.83, 1)
+        p.inputs["Alpha"].default_value = 1.0; p.inputs["Metallic"].default_value = 0.0
+        p.inputs["Transmission Weight"].default_value = 1.0; p.inputs["Roughness"].default_value = 0.0
+        p.inputs["IOR"].default_value = 1.45
+        print("VENTANA", m.name, "oscura" if oscuro else "clara")
+
 # ------------------------------------------------------------------ escenario
 ESC = PLAN.get("escenario", "estudio")       # estudio (fondo negro) | exterior (HDRI real visible)
 TOMA_FX = SHOT.get("mov", 1.0)                # multiplicador de recorrido de cámara (más = más rápido)
@@ -435,8 +545,68 @@ nt.links.new(tc.outputs["Object"], vl.inputs[0]); nt.links.new(vl.outputs["Value
 nt.links.new(mr.outputs["Result"], ms.inputs["Fac"])
 nt.links.new(P.outputs["BSDF"], ms.inputs[1]); nt.links.new(blk.outputs["BSDF"], ms.inputs[2])
 nt.links.new(ms.outputs["Shader"], outm.inputs["Surface"])
-bpy.ops.mesh.primitive_plane_add(size=200 if ESC == "exterior" else 80, location=(0, 0, 0))
-suelo = bpy.context.object
+# contacto: oclusión ambiental oscurece y quita brillo justo debajo de las llantas y el coche
+ao = nt.nodes.new("ShaderNodeAmbientOcclusion"); ao.inputs["Distance"].default_value = 0.35; ao.samples = 16
+inv_ao = nt.nodes.new("ShaderNodeMath"); inv_ao.operation = "SUBTRACT"; inv_ao.inputs[0].default_value = 1.0
+nt.links.new(ao.outputs["AO"], inv_ao.inputs[1])
+mx_ao = nt.nodes.new("ShaderNodeMath"); mx_ao.operation = "MAXIMUM"
+nt.links.new(inv_ao.outputs[0], mx_ao.inputs[0]); nt.links.new(mr.outputs["Result"], mx_ao.inputs[1])
+nt.links.new(mx_ao.outputs[0], ms.inputs["Fac"])
+# manchas/huellas cerca del coche: zonas más mate en el piso pulido
+smg = nt.nodes.new("ShaderNodeTexNoise"); smg.inputs["Scale"].default_value = 4.0; smg.inputs["Detail"].default_value = 10
+nt.links.new(tc.outputs["Object"], smg.inputs["Vector"])
+smr = nt.nodes.new("ShaderNodeMapRange"); smr.inputs["From Min"].default_value = 0.55; smr.inputs["From Max"].default_value = 0.75
+smr.inputs["To Min"].default_value = 0.0; smr.inputs["To Max"].default_value = 0.35
+nt.links.new(smg.outputs["Fac"], smr.inputs["Value"])
+near = nt.nodes.new("ShaderNodeMapRange"); near.inputs["From Min"].default_value = 2.0; near.inputs["From Max"].default_value = 4.5
+near.inputs["To Min"].default_value = 1.0; near.inputs["To Max"].default_value = 0.0
+nt.links.new(vl.outputs["Value"], near.inputs["Value"])
+smm = nt.nodes.new("ShaderNodeMath"); smm.operation = "MULTIPLY"
+nt.links.new(smr.outputs["Result"], smm.inputs[0]); nt.links.new(near.outputs["Result"], smm.inputs[1])
+rsum = nt.nodes.new("ShaderNodeMath"); rsum.operation = "ADD"
+nt.links.new(rr.outputs["Result"], rsum.inputs[0]); nt.links.new(smm.outputs[0], rsum.inputs[1])
+nt.links.new(rsum.outputs[0], P.inputs["Roughness"])
+P.inputs["Specular IOR Level"].default_value = 0.38
+
+
+def ciclorama(R0=7.0, Rc=4.5, Hw=14.0, seg=128):
+    """estudio infinito: el piso se curva hacia la pared (sin línea de horizonte)"""
+    import bmesh
+    prof = [(r, 0.0) for r in (0.4, 1, 2, 3, 4, 5, 6, R0)]
+    for i in range(1, 17):
+        a = math.radians(90 * i / 16)
+        prof.append((R0 + Rc * math.sin(a), Rc * (1 - math.cos(a))))
+    prof.append((R0 + Rc, Hw))
+    bm = bmesh.new()
+    cen = bm.verts.new((0, 0, 0))
+    rings = [[bm.verts.new((r * math.cos(2 * math.pi * j / seg), r * math.sin(2 * math.pi * j / seg), z)) for r, z in prof] for j in range(seg)]
+    for j in range(seg):
+        a_, b_ = rings[j], rings[(j + 1) % seg]
+        bm.faces.new((cen, a_[0], b_[0]))
+        for i in range(len(prof) - 1):
+            bm.faces.new((a_[i], a_[i + 1], b_[i + 1], b_[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new("Ciclorama"); bm.to_mesh(me); bm.free()
+    if me.polygons[0].normal.z < 0:
+        for pg in me.polygons:
+            pg.flip()
+    for pg in me.polygons:
+        pg.use_smooth = True
+    return link(bpy.data.objects.new("Ciclorama", me))
+
+
+if ESC == "exterior":
+    bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+    suelo = bpy.context.object
+else:
+    suelo = ciclorama()
+    # oscurece gradual con distancia + altura: piso -> curva -> pared, sin corte
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    zz = nt.nodes.new("ShaderNodeMath"); zz.operation = "MULTIPLY_ADD"
+    nt.links.new(sep.outputs["Z"], zz.inputs[0]); zz.inputs[1].default_value = 1.6; nt.links.new(vl.outputs["Value"], zz.inputs[2])
+    nt.links.new(zz.outputs[0], mr.inputs["Value"])
+    mr.inputs["From Min"].default_value = 4.0; mr.inputs["From Max"].default_value = 17.0
+    mr.inputs["To Max"].default_value = 0.96
 suelo.data.materials.append(piso)
 if ESC == "exterior":
     suelo.is_shadow_catcher = True
@@ -450,11 +620,58 @@ def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)
     ob.location = loc
     ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
     ob.visible_camera = False
+    ob.visible_glossy = False   # el reflejo lo da la tarjeta con forma (abajo), no un rectángulo plano quemado
+    tarjeta(name, loc, size, size_y, ld.energy, target, color, tiras=PLAN.get("tiras_" + name, 1))
     return ob
 
 
+_tarjeta_mats = {}
+
+
+def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
+    """softbox visible solo en reflejos: centro caliente, bordes que caen, costuras del difusor"""
+    mt = bpy.data.materials.new("Tarjeta_" + name); mt.use_nodes = True
+    tn = mt.node_tree; tn.nodes.clear(); L_ = tn.links.new
+    o_ = tn.nodes.new("ShaderNodeOutputMaterial"); em = tn.nodes.new("ShaderNodeEmission")
+    tc_ = tn.nodes.new("ShaderNodeTexCoord"); sp = tn.nodes.new("ShaderNodeSeparateXYZ")
+    L_(tc_.outputs["UV"], sp.inputs[0])
+    def borde(sock, pot):   # 1 en el centro, cae a 0 en los bordes
+        a = tn.nodes.new("ShaderNodeMath"); a.operation = "MULTIPLY_ADD"; a.inputs[1].default_value = 2; a.inputs[2].default_value = -1
+        L_(sock, a.inputs[0])
+        b = tn.nodes.new("ShaderNodeMath"); b.operation = "POWER"; b.inputs[1].default_value = pot; L_(a.outputs[0], b.inputs[0])
+        b2 = tn.nodes.new("ShaderNodeMath"); b2.operation = "ABSOLUTE"; L_(b.outputs[0], b2.inputs[0])
+        c = tn.nodes.new("ShaderNodeMath"); c.operation = "SUBTRACT"; c.inputs[0].default_value = 1; L_(b2.outputs[0], c.inputs[1])
+        return c.outputs[0]
+    fx_ = borde(sp.outputs["X"], 6.0); fy_ = borde(sp.outputs["Y"], 2.0)
+    m1 = tn.nodes.new("ShaderNodeMath"); m1.operation = "MULTIPLY"; L_(fx_, m1.inputs[0]); L_(fy_, m1.inputs[1])
+    sock = m1.outputs[0]
+    if tiras > 1:   # varias tiras separadas por huecos oscuros (como un techo de tubos de luz)
+        w_ = tn.nodes.new("ShaderNodeMath"); w_.operation = "MULTIPLY"; w_.inputs[1].default_value = tiras; L_(sp.outputs["X"], w_.inputs[0])
+        fr = tn.nodes.new("ShaderNodeMath"); fr.operation = "FRACT"; L_(w_.outputs[0], fr.inputs[0])
+        st = borde(fr.outputs[0], 8.0)
+        m2 = tn.nodes.new("ShaderNodeMath"); m2.operation = "MULTIPLY"; L_(sock, m2.inputs[0]); L_(st, m2.inputs[1]); sock = m2.outputs[0]
+    k_ = tn.nodes.new("ShaderNodeMath"); k_.operation = "MULTIPLY"
+    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 0.9   # misma brillantez que la luz de área
+    L_(sock, k_.inputs[0]); L_(k_.outputs[0], em.inputs["Strength"])
+    em.inputs["Color"].default_value = (*color, 1)
+    L_(em.outputs["Emission"], o_.inputs["Surface"])
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc)
+    pl = bpy.context.object; pl.name = "Tarjeta_" + name
+    pl.scale = (sx, sy, 1); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    pl.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("Z", "Y").to_euler()
+    pl.data.materials.append(mt)
+    pl.visible_camera = False; pl.visible_diffuse = False; pl.visible_shadow = False
+    pl.visible_volume_scatter = False; pl.visible_transmission = True
+    return pl
+
+
 # Iluminación de estudio de autos: cenital grande + tiras laterales + contraluz + relleno frontal
+PLAN.setdefault("tiras_Cenital", 3)
 softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
+# luz tenue dentro de la cabina: por las ventanas se distingue el volante y los asientos
+_li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 18 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.35
+_lo = link(bpy.data.objects.new("Cabina", _li)); _lo.location = ((mn.x + mx.x) / 2 - L * 0.08, 0, H * 0.7)
+_lo.visible_glossy = False; _lo.visible_camera = False
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("TiraDer", (-L * 0.55, -W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
 softbox("Contra", (-L * 1.6, 0, 3.0), 3.0, 1.2, 380, (0, 0, 0.6))
@@ -475,6 +692,36 @@ for o in meshes(objs):
             RUEDAS.append(o)
 
 
+def _reparent(o, piv):
+    mw = o.matrix_world.copy(); o.parent = piv; o.matrix_parent_inverse = Matrix(); o.matrix_world = mw
+
+
+def dirigir_ruedas(grados):
+    """ruedas delanteras giradas (pose natural, no 'modelo 3D'); calipers/discos de esa rueda giran con ella"""
+    if not grados:
+        return
+    cx = (mn.x + mx.x) / 2
+    frente = [o for o in RUEDAS if (sum(bbox([o]), Vector()) / 2).x > cx]
+    if not frente:
+        return
+    grupos = []
+    for o in frente:
+        c = sum(bbox([o]), Vector()) / 2
+        g = next((g_ for g_ in grupos if (g_[0] - c).length < 0.35), None)
+        if g: g[1].append(o)
+        else: grupos.append([c, [o]])
+    for c, obs in grupos:
+        extra = [o for o in meshes(objs) if o not in RUEDAS and any(k in txt(o) for k in ("caliper", "brake", "disc", "rotor", "freno"))
+                 and (sum(bbox([o]), Vector()) / 2 - c).length < 0.4]
+        piv = empty("Direccion", parent=car); piv.matrix_world = Matrix.Translation(Vector((c.x, c.y, c.z)))
+        bpy.context.view_layer.update()
+        for o in obs + extra:
+            _reparent(o, piv)
+        piv.rotation_euler.z = math.radians(grados)
+    bpy.context.view_layer.update()
+    print("DIRECCION", grados, "grados,", len(grupos), "ruedas")
+
+
 def girar_ruedas(vel):
     dist = vel * (N - 1) / FPS
     for o in RUEDAS:
@@ -482,7 +729,7 @@ def girar_ruedas(vel):
         piv = empty(o.name + "_giro", parent=car)
         piv.matrix_world = Matrix.Translation(c)
         bpy.context.view_layer.update()
-        mw = o.matrix_world.copy(); o.parent = piv; o.matrix_parent_inverse = Matrix(); o.matrix_world = mw
+        _reparent(o, piv)
         piv.rotation_euler.y = 0; piv.keyframe_insert("rotation_euler", frame=1)
         piv.rotation_euler.y = dist / rad; piv.keyframe_insert("rotation_euler", frame=N)
         for fc in piv.animation_data.action.fcurves:
@@ -584,6 +831,8 @@ manejo = t.startswith("manejo") or t == "rueda_gira"
 if manejo and ESC == "estudio":
     girar_ruedas(VEL)
     tiras_en_movimiento(VEL)
+elif not manejo:
+    dirigir_ruedas(PLAN.get("direccion", 13))
 if t == "trasera":        # 3/4 trasero bajo, sube, calaveras encendidas
     toma((B - 3.2, -Y - 2.6, 0.45), (B - 2.8, -Y - 2.2, 1.1), (B + 0.4, -Y * 0.4, 0.6), (B + 0.5, -Y * 0.3, 0.75), (55, 60), 3.5)
 elif t == "faro":         # detalle del faro, deslizamiento
@@ -615,6 +864,17 @@ elif t == "rueda_gira":   # rin girando de cerca
 else:                     # hero 3/4 frontal (still de revisión de modelo)
     toma((F + 3.4, -Y - 3.0, 1.1), (F + 3.3, -Y - 3.0, 1.1), (0.2, 0, 0.62), (0.2, 0, 0.62), (60, 60), 4)
 sacudida(SHOT.get("sacudida", 0.0))
+# profundidad de campo de foto real
+FM = PLAN.get("fstop_mult", 0.5)
+if t in ("faro", "calavera", "rueda", "rueda_gira"):
+    cd.dof.aperture_fstop = max(1.4, cd.dof.aperture_fstop * 0.7)
+else:
+    foco = empty("Foco", (F - 0.55, -Y * 0.95, 0.55) if t not in ("trasera",) else (B + 0.5, -Y * 0.95, 0.6))
+    if t in ("perfil", "manejo_lado"):
+        foco.location = (0, -Y, 0.55)
+    cd.dof.focus_object = foco
+    cd.dof.aperture_fstop = max(1.4, cd.dof.aperture_fstop * FM)
+print("DOF f/", round(cd.dof.aperture_fstop, 1))
 
 # ------------------------------------------------------------------ render
 r = sc.render
@@ -644,7 +904,7 @@ vs.exposure = PLAN.get("exposure", -0.5 if ESC == "estudio" else 0.0)   # -0.5: 
 os.makedirs(A.out, exist_ok=True)
 if A.still:
     sc.frame_set(max(1, N // 2))
-    r.image_settings.file_format = "JPEG"; r.image_settings.quality = 92
+    r.image_settings.file_format = "JPEG"; r.image_settings.quality = 97
     r.filepath = os.path.join(A.out, f"still_{PLAN.get('id', 'x')}_{A.shot:02d}_{t}.jpg")
     bpy.ops.render.render(write_still=True)
 else:
