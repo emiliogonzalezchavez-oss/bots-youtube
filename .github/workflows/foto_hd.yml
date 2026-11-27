@@ -1,0 +1,98 @@
+name: Foto HD (banner / miniaturas)
+# Una sola foto a súper resolución, repartida en franjas en paralelo, unida y bajada a la mitad (nitidez real).
+on:
+  workflow_dispatch:
+    inputs:
+      modelo: { description: "uid de Sketchfab", required: true }
+      livery: { description: "estilo (vacío = el primero del coche)", default: "" }
+      toma: { description: "toma", default: "hero" }
+      plan: { description: "JSON extra del plan", default: '{"res":[2560,1440],"superres":2,"lente_mult":0.6,"mira_dz":-0.2}' }
+      tiras: { description: "franjas en paralelo", default: "8" }
+      samples: { description: "samples", default: "512" }
+
+permissions: { contents: write }
+env:
+  BLENDER_URL: https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      tiras: ${{ steps.t.outputs.t }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: t
+        run: echo "t=$(python3 -c "print(list(range(int('${{ inputs.tiras }}'))))")" >> $GITHUB_OUTPUT
+      - name: Bajar modelo y HDRI (una vez)
+        env: { SKETCHFAB_TOKEN: "${{ secrets.SKETCHFAB_TOKEN }}" }
+        run: |
+          CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m); test -s "$CAR"; echo "$CAR" > m/ruta.txt
+          bash edits/bajar_estudio.sh m/estudio.hdr || true
+          LIV="${{ inputs.livery }}"
+          [ -z "$LIV" ] && LIV=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print((m.get('${{ inputs.modelo }}',{}).get('estilos') or ['gt3_blanco'])[0])")
+          python3 - <<PY
+          import json, os
+          p = {"id": "${{ inputs.modelo }}_$LIV", "livery": "$LIV", "fps": 30, "shots": [{"name": "${{ inputs.toma }}", "frames": 30}]}
+          if os.path.exists("m/estudio.hdr"): p["hdri_estudio"] = "m/estudio.hdr"
+          p.update(json.loads('''${{ inputs.plan }}'''))
+          json.dump(p, open("m/p.json", "w")); print(p)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: { name: modelo, path: m/ }
+
+  tira:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        k: ${{ fromJSON(needs.prep.outputs.tiras) }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libxi6 libxkbcommon0 libsm6 libgl1 libegl1 libxrender1 libxxf86vm1 libxfixes3 > /dev/null
+      - uses: actions/cache@v4
+        with: { path: ~/blender, key: blender-4.2.3 }
+      - run: if [ ! -x ~/blender/blender ]; then mkdir -p ~/blender && curl -sfL "$BLENDER_URL" | tar -xJ -C ~/blender --strip-components=1; fi
+      - uses: actions/download-artifact@v4
+        with: { name: modelo, path: m }
+      - name: Render franja ${{ matrix.k }}
+        run: |
+          GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ inputs.modelo }}',{}).get('girar') else '')")
+          ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$(cat m/ruta.txt)" --uid "${{ inputs.modelo }}" $GIRAR \
+            --plan m/p.json --shot 0 --out out --still --samples ${{ inputs.samples }} --tira ${{ matrix.k }}/${{ inputs.tiras }} 2>&1 \
+            | grep -E "LISTO|rror|DIRECCION|LLANTAS|DOF|Estudio" | tail -12
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: "tira-${{ matrix.k }}", path: out/ }
+
+  unir:
+    needs: tira
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { path: t, pattern: "tira-*", merge-multiple: true }
+      - name: Unir, bajar a la mitad, sharpen, grano, EXIF
+        run: |
+          pip install -q pillow numpy piexif
+          python3 - <<'PY'
+          import glob
+          from PIL import Image
+          fs = sorted(glob.glob("t/*_tira*.png")); print(fs)
+          ims = [Image.open(f).convert("RGB") for f in fs]
+          W = ims[0].width; H = sum(i.height for i in ims)
+          out = Image.new("RGB", (W, H)); y = 0
+          for i in ims:
+              out.paste(i, (0, y)); y += i.height
+          name = fs[0].split("_tira")[0].split("/")[-1]
+          out.save(f"{name}_hd.png"); print(out.size)
+          PY
+          python3 edits/post_foto.py *_hd.png
+          ls -la *.jpg
+      - name: Guardar en renders
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          mkdir -p /tmp/f && cp *_hd.jpg /tmp/f/
+          if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
+          D=foto-$(date -u +%Y%m%d-%H%M); mkdir -p "$D"; cp /tmp/f/*.jpg "$D"/
+          git add "$D"; git commit -qm "foto $D"; git push -q origin renders; echo "$D"

@@ -24,6 +24,7 @@ ap.add_argument("--out", required=True)
 ap.add_argument("--front", default="auto", help="+X -X +Y -Y o auto")
 ap.add_argument("--girar", action="store_true", help="girar 180° (frente detectado al revés)")
 ap.add_argument("--samples", type=int, default=128)
+ap.add_argument("--tira", default="", help="k/n: renderiza solo la franja horizontal k de n (fotos HD repartidas en varios jobs)")
 ap.add_argument("--still", action="store_true", help="1 frame a resolución completa (revisión de calidad)")
 ap.add_argument("--uid", default="", help="uid de Sketchfab (para los overrides de materiales en modelos.json)")
 ap.add_argument("--dump", action="store_true", help="solo lista materiales de luces/vidrios y sale")
@@ -927,11 +928,11 @@ else:                     # hero 3/4 frontal (still de revisión de modelo)
     toma((F + 3.4, -Y - 3.0, 1.1), (F + 3.3, -Y - 3.0, 1.1), (0.2, 0, 0.62), (0.2, 0, 0.62), (60, 60), 4)
 sacudida(SHOT.get("sacudida", 0.0))
 # profundidad de campo de foto real
-FM = PLAN.get("fstop_mult", 0.5)
+FM = PLAN.get("fstop_mult", 0.75)
 if t in ("faro", "calavera", "rueda", "rueda_gira"):
     cd.dof.aperture_fstop = max(1.4, cd.dof.aperture_fstop * 0.7)
 else:
-    foco = empty("Foco", (F - 0.55, -Y * 0.95, 0.55) if t not in ("trasera",) else (B + 0.5, -Y * 0.95, 0.6))
+    foco = empty("Foco", (FARO[0], FARO[1] - 0.1, FARO[2]) if t not in ("trasera",) else (B + 0.5, -Y * 0.95, 0.6))
     if t in ("perfil", "manejo_lado"):
         foco.location = (0, -Y, 0.55)
     cd.dof.focus_object = foco
@@ -947,12 +948,22 @@ sc.cycles.use_adaptive_sampling = True
 sc.cycles.adaptive_threshold = 0.015
 sc.cycles.use_denoising = True
 sc.cycles.denoiser = "OPENIMAGEDENOISE"
+sc.cycles.denoising_input_passes = "RGB_ALBEDO_NORMAL"   # el denoiser usa albedo y normales: no embarra el detalle
+try:
+    sc.cycles.denoising_prefilter = "ACCURATE"; sc.cycles.denoising_quality = "HIGH"
+except Exception:
+    pass
 sc.cycles.max_bounces = 8; sc.cycles.glossy_bounces = 4; sc.cycles.transmission_bounces = 8
 sc.cycles.caustics_reflective = False; sc.cycles.caustics_refractive = False
 sc.cycles.blur_glossy = 0.5
 r.use_persistent_data = True
 r.use_motion_blur = True; r.motion_blur_shutter = 0.6 if manejo else 0.35
-r.resolution_x, r.resolution_y, r.resolution_percentage = *PLAN.get("res", (1080, 1920)), 100
+r.resolution_x, r.resolution_y, r.resolution_percentage = *PLAN.get("res", (1080, 1920)), int(100 * PLAN.get("superres", 1))
+if A.tira:   # franja horizontal k de n (Blender mide el borde desde abajo)
+    k_, n_ = (int(x) for x in A.tira.split("/"))
+    r.use_border = True; r.use_crop_to_border = True
+    r.border_min_x, r.border_max_x = 0.0, 1.0
+    r.border_min_y, r.border_max_y = 1 - (k_ + 1) / n_, 1 - k_ / n_
 vs = sc.view_settings
 vs.view_transform = "AgX"
 for look in (("AgX - Punchy", "Punchy") if LIV else ()) + ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Base Contrast"):
@@ -967,7 +978,9 @@ os.makedirs(A.out, exist_ok=True)
 if A.still:
     sc.frame_set(max(1, N // 2))
     r.image_settings.file_format = "JPEG"; r.image_settings.quality = 97
-    r.filepath = os.path.join(A.out, f"still_{PLAN.get('id', 'x')}_{A.shot:02d}_{t}.jpg")
+    r.filepath = os.path.join(A.out, f"still_{PLAN.get('id', 'x')}_{A.shot:02d}_{t}" + (f"_tira{A.tira.split('/')[0]:0>2}" if A.tira else "") + ".jpg")
+    if A.tira:
+        r.image_settings.file_format = "PNG"; r.image_settings.color_depth = "8"; r.filepath = r.filepath[:-4] + ".png"
     bpy.ops.render.render(write_still=True)
 else:
     r.image_settings.file_format = "FFMPEG"

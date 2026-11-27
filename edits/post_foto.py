@@ -20,6 +20,12 @@ def escalar_canal(c, k):
 
 def acabado(ruta, seed=0):
     im = Image.open(ruta).convert("RGB")
+    # supermuestreo: si viene al doble (p.ej. 5120x2880), se baja a la mitad con Lanczos = mucha más nitidez
+    if max(im.size) > 2600:
+        im = im.resize((im.width // 2, im.height // 2), Image.LANCZOS)
+    # sharpen leve (unsharp mask: radio 0.8 px, 40 %)
+    from PIL import ImageFilter
+    im = im.filter(ImageFilter.UnsharpMask(radius=0.8, percent=40, threshold=2))
     a = np.asarray(im).astype(np.float32)
     h, w, _ = a.shape
     # aberración cromática: rojo un poco más grande, azul un poco más chico (se nota solo en las orillas)
@@ -31,12 +37,12 @@ def acabado(ruta, seed=0):
     d = np.sqrt(((xx - w / 2) / (w / 2)) ** 2 + ((yy - h / 2) / (h / 2)) ** 2) / np.sqrt(2)
     a *= (1 - 0.28 * d ** 2.2)[..., None]
     # nivel de negro de sensor real: el negro nunca es 0 (sube un poco), así el grano no se "pega" en 0
-    a = a * 0.945 + 14.0
+    a = a * 0.955 + 11.0
     # grano de sensor: más fuerte en sombras, con algo de color
     rng = np.random.default_rng(seed)
     lum = a.mean(-1, keepdims=True) / 255.0
-    amp = 3.4 * (1.2 - lum) ** 1.5
-    g = rng.normal(0, 1, (h, w, 1)) * amp + rng.normal(0, 0.35, (h, w, 3)) * amp
+    amp = 2.3 * (1.2 - lum) ** 1.5      # grano más bajo y fino (1 px, poco color)
+    g = rng.normal(0, 1, (h, w, 1)) * amp + rng.normal(0, 0.22, (h, w, 3)) * amp
     a = a + g
     out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
     kw = {"quality": 93, "subsampling": 0}
@@ -64,6 +70,7 @@ def acabado(ruta, seed=0):
             "1st": {I.Compression: 6, I.XResolution: (72, 1), I.YResolution: (72, 1), I.ResolutionUnit: 2},
             "thumbnail": mini.getvalue()}
         kw["exif"] = piexif.dump(exif)
+    ruta = ruta.rsplit(".", 1)[0] + ".jpg"
     out.save(ruta, "JPEG", **kw)
     print("acabado", ruta)
 
