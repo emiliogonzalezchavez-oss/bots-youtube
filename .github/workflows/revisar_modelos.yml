@@ -64,7 +64,7 @@ jobs:
           elif [ -n "$VARIANTES" ]; then
             python3 edits/variantes.py
             for f in v*.json; do
-              ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan $f --shot 0 --out out --still 2>&1 | grep -E "LISTO|rror|LLANTAS|DIRECCION|VENTANA|DOF|PINTURA|Estudio" | tail -12
+              ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$CAR" --uid "${{ matrix.uid }}" $GIRAR --plan $f --shot 0 --out out --still 2>&1 | grep -E "LISTO|rror|LLANTAS|DIRECCION|VENTANA|DOF|PINTURA|Estudio|DEBUGMAT" | tail -80
             done
           else
             for s in $(python3 -c "import json;print(' '.join(str(i) for i in range(len(json.load(open('p.json'))['shots']))))"); do

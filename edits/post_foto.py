@@ -31,7 +31,10 @@ def acabado(ruta, seed=0):
     # aberración cromática: rojo un poco más grande, azul un poco más chico (se nota solo en las orillas)
     r = escalar_canal(a[..., 0].astype(np.uint8), 1.0012).astype(np.float32)
     b = escalar_canal(a[..., 2].astype(np.uint8), 0.9988).astype(np.float32)
-    a = np.stack([r, a[..., 1], b], -1)
+    yy0, xx0 = np.mgrid[0:h, 0:w]
+    rad = np.sqrt(((xx0 - w / 2) / (w / 2)) ** 2 + ((yy0 - h / 2) / (h / 2)) ** 2) / np.sqrt(2)
+    mk = np.clip((rad - 0.5) / 0.5, 0, 1) ** 2          # 0 en el centro, solo aparece en las orillas
+    a = np.stack([a[..., 0] * (1 - mk) + r * mk, a[..., 1], a[..., 2] * (1 - mk) + b * mk], -1)
     # viñeteo suave de lente
     yy, xx = np.mgrid[0:h, 0:w]
     d = np.sqrt(((xx - w / 2) / (w / 2)) ** 2 + ((yy - h / 2) / (h / 2)) ** 2) / np.sqrt(2)

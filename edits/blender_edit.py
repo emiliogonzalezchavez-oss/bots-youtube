@@ -522,6 +522,17 @@ for m in bpy.data.materials:
         p.inputs["IOR"].default_value = 1.45
         print("VENTANA", m.name, "oscura" if oscuro else "clara")
 
+if PLAN.get("debug_materiales"):
+    import colorsys, zlib
+    for i, m in enumerate(sorted({sl.material for o in meshes(objs) for sl in o.material_slots if sl.material}, key=lambda x: x.name)):
+        h = (zlib.crc32(m.name.encode()) % 360) / 360.0
+        col = colorsys.hsv_to_rgb(h, 0.85, 0.9)
+        m.use_nodes = True; nt_ = m.node_tree
+        out_ = next((n for n in nt_.nodes if n.type == "OUTPUT_MATERIAL"), None) or nt_.nodes.new("ShaderNodeOutputMaterial")
+        em_ = nt_.nodes.new("ShaderNodeEmission"); em_.inputs["Color"].default_value = (*col, 1); em_.inputs["Strength"].default_value = 1.0
+        nt_.links.new(em_.outputs[0], out_.inputs["Surface"])
+        print(f"DEBUGMAT {m.name} rgb={tuple(round(c * 255) for c in col)}")
+
 # ------------------------------------------------------------------ escenario
 ESC = PLAN.get("escenario", "estudio")       # estudio (fondo negro) | exterior (HDRI real visible)
 TOMA_FX = SHOT.get("mov", 1.0)                # multiplicador de recorrido de cámara (más = más rápido)
@@ -673,7 +684,8 @@ def softbox(name, loc, size, size_y, energy, target=(0, 0, 0.6), color=(1, 1, 1)
     ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
     ob.visible_camera = False
     ob.visible_glossy = False   # el reflejo lo da la tarjeta con forma (abajo), no un rectángulo plano quemado
-    tarjeta(name, loc, size, size_y, ld.energy, target, color, tiras=PLAN.get("tiras_" + name, 1))
+    if not PLAN.get("sin_tarjetas"):
+        tarjeta(name, loc, size, size_y, ld.energy * PLAN.get("tarjeta_" + name, 1.0), target, color, tiras=PLAN.get("tiras_" + name, 1))
     return ob
 
 
@@ -778,9 +790,41 @@ def dirigir_ruedas(grados):
         bpy.context.view_layer.update()
         for o in obs + extra:
             _reparent(o, piv)
-        piv.rotation_euler.z += math.radians(grados)   # += : conserva la compensación de giro del coche
+        base_z = piv.rotation_euler.z
+        cuerpo = [o for o in meshes(objs) if o not in RUEDAS and o not in extra
+                  and any(sl.material and sl.material.name in pintura for sl in o.material_slots)]
+        ang = grados
+        while True:
+            piv.rotation_euler.z = base_z + math.radians(ang)
+            bpy.context.view_layer.update()
+            if abs(ang) < 1 or not choca(obs, cuerpo):
+                break
+            ang -= 2 if ang > 0 else -2
+        print("DIRECCION pedida", grados, "-> sin choque", ang)
     bpy.context.view_layer.update()
-    print("DIRECCION", grados, "grados,", len(grupos), "ruedas")
+
+
+def choca(llantas, cuerpo):
+    """¿alguna llanta atraviesa la carrocería? (BVH de mallas en coordenadas de mundo)"""
+    from mathutils.bvhtree import BVHTree
+    dg = bpy.context.evaluated_depsgraph_get()
+    def arbol(o):
+        me = o.evaluated_get(dg).to_mesh(); mw = o.matrix_world
+        t = BVHTree.FromPolygons([mw @ v.co for v in me.vertices], [tuple(pg.vertices) for pg in me.polygons])
+        o.evaluated_get(dg).to_mesh_clear(); return t
+    ll = [o for o in llantas if any(k in txt(o) for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen"))] or llantas
+    a_ll = [(o, arbol(o)) for o in ll]
+    for c in cuerpo:
+        bc_ = bbox([c])
+        tc_ = None
+        for o, t in a_ll:
+            bo = bbox([o])
+            if any(bo[1][i] < bc_[0][i] or bo[0][i] > bc_[1][i] for i in range(3)):
+                continue
+            tc_ = tc_ or arbol(c)
+            if t.overlap(tc_):
+                return True
+    return False
 
 
 def girar_ruedas(vel):
