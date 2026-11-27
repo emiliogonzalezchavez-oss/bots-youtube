@@ -469,13 +469,17 @@ def pintura_real(m, p):
     fa = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); L_(film.outputs[0], fa.inputs[0]); L_(arriba.outputs["Result"], fa.inputs[1])
     tot = _n(nt, "ShaderNodeMath", operation="ADD"); L_(salida, tot.inputs[0]); L_(fa.outputs[0], tot.inputs[1])
     salida = tot.outputs[0]
+    if m.name in MASCARA_FRANJA:   # vinil: casi sin laca encima -> no se vuelve gris en ángulos rasantes
+        cw = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); cw.inputs[1].default_value = -0.75; cw.inputs[2].default_value = 1.0
+        L_(MASCARA_FRANJA[m.name], cw.inputs[0]); L_(cw.outputs[0], p.inputs["Coat Weight"])
     if m.name in MASCARA_FRANJA:   # franjas negro brillante (satinado se veía gris plata con el HDRI)
         fm = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); fm.inputs[1].default_value = 0.06
         L_(MASCARA_FRANJA[m.name], fm.inputs[0])
         mxr = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(salida, mxr.inputs[0]); L_(fm.outputs[0], mxr.inputs[1])
         salida = mxr.outputs[0]
     L_(salida, p.inputs["Coat Roughness"])
-    p.inputs["Coat Weight"].default_value = 1.0
+    if not p.inputs["Coat Weight"].is_linked:
+        p.inputs["Coat Weight"].default_value = 1.0
     p.inputs["Coat IOR"].default_value = 1.5
     p.inputs["Specular IOR Level"].default_value = 0.12   # el brillo lo da la laca, no la base (quita la neblina gris)
 
