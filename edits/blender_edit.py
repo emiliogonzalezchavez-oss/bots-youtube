@@ -504,7 +504,9 @@ for m in bpy.data.materials:
     es_pintura = m.name in pintura or (any(k in nm for k in ("paint", "carpaint", "car_paint", "pintura")) and not tiene(nm, NO_PINTURA))
     if es_pintura:
         pintura_real(m, p)
-    elif any(k in nm for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen")) and not tiene(nm, ("rim",)):
+    elif (any(k in nm for k in ("tire", "tyre", "llanta", "neum", "reifen"))
+          or ("rubber" in nm and all(any(k in o.name.lower() for k in ("tire", "tyre", "wheel", "llanta")) for o in meshes(objs)
+                                     if any(sl.material == m for sl in o.material_slots)))) and not tiene(nm, ("rim",)):
         ensuciar(m, p, (0.24, 0.22, 0.19), 0.6, 0.2, 9.0)          # polvo gris en la goma
     elif m.name in rines or (tiene(nm, ("rim", "wheel")) and not any(k in nm for k in ("tire", "tyre", "rubber"))):
         ensuciar(m, p, (0.13, 0.11, 0.09), 0.7, 0.05, 14.0)        # brake dust en los rines
@@ -730,7 +732,9 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
         if rc is None:
             rc = bpy.data.collections.new("Receptores")
             for o_ in meshes(objs):
-                rc.objects.link(o_)
+                mats_ = {sl.material.name for sl in o_.material_slots if sl.material}
+                if mats_ & (pintura | rines):
+                    rc.objects.link(o_)
         pl.light_linking.receiver_collection = rc
     except Exception as e:
         print("sin light linking:", e)
@@ -740,6 +744,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
 
 # Iluminación de estudio de autos: cenital grande + tiras laterales + contraluz + relleno frontal
 PLAN.setdefault("tiras_Cenital", 3)
+PLAN.setdefault("tarjeta_Cenital", 0.4)   # reflejo del techo de luz más tenue: sin parches blancos en cofre/salpicadera
 softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 # luz tenue dentro de la cabina: por las ventanas se distingue el volante y los asientos
 _li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 2 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.6
@@ -939,7 +944,7 @@ if manejo and ESC == "estudio":
     girar_ruedas(VEL)
     tiras_en_movimiento(VEL)
 elif not manejo:
-    dirigir_ruedas(PLAN.get("direccion", -24))
+    dirigir_ruedas(PLAN.get("direccion", -16))
 if t == "trasera":        # 3/4 trasero bajo, sube, calaveras encendidas
     toma((B - 3.2, -Y - 2.6, 0.45), (B - 2.8, -Y - 2.2, 1.1), (B + 0.4, -Y * 0.4, 0.6), (B + 0.5, -Y * 0.3, 0.75), (55, 60), 3.5)
 elif t == "faro":         # detalle del faro, deslizamiento
