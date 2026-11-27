@@ -23,3 +23,8 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
   apagadas, rojo puro sin rosa), reflejos de la pintura (no plástico, no lavada), llantas tocando el piso, cámara nunca dentro del coche.
 - Look estudio: exposición -0.5, luces x0.6, HDRI de estudio fuerza 1.0, AgX Punchy con livery.
 - No meter contraseñas/tokens en webs; el dueño pega los secretos él mismo.
+
+## Canal
+Los edits van al canal **Nightshift Garage** (@nightshiftgaragecars, antes The Fact Bomb, channelId UC6GXUQtQ-lVfBJMBwoRAPDw).
+Se sube con `subir.py factbomb ...` del repo privado bot-youtube (secret TOKEN_FACTBOMB). Logo y banner en `marca/`.
+Crédito CC BY de cada modelo en la descripción de cada video.
