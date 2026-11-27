@@ -30,10 +30,12 @@ def acabado(ruta, seed=0):
     yy, xx = np.mgrid[0:h, 0:w]
     d = np.sqrt(((xx - w / 2) / (w / 2)) ** 2 + ((yy - h / 2) / (h / 2)) ** 2) / np.sqrt(2)
     a *= (1 - 0.28 * d ** 2.2)[..., None]
-    # grano de sensor: más visible en sombras/medios tonos, con algo de color
+    # nivel de negro de sensor real: el negro nunca es 0 (sube un poco), así el grano no se "pega" en 0
+    a = a * 0.945 + 14.0
+    # grano de sensor: más fuerte en sombras, con algo de color
     rng = np.random.default_rng(seed)
     lum = a.mean(-1, keepdims=True) / 255.0
-    amp = 5.5 * (1.15 - lum)
+    amp = 3.4 * (1.2 - lum) ** 1.5
     g = rng.normal(0, 1, (h, w, 1)) * amp + rng.normal(0, 0.35, (h, w, 3)) * amp
     a = a + g
     out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))

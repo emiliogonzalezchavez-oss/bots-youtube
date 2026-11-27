@@ -146,7 +146,7 @@ mn, mx = bbox_robusto(objs)
 _ll = [o for o in meshes(objs) if any(k in (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
                                       for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen", "wheel"))]
 _zl = min((o.matrix_world @ v.co).z for o in _ll for v in o.data.vertices) if _ll else bbox(objs)[0].z
-car.location.z -= _zl + 0.018
+car.location.z -= _zl + 0.025
 print(f"APOYO llantas={len(_ll)} z_llanta={_zl:.3f} z_min_total={bbox(objs)[0].z:.3f}")
 bpy.context.view_layer.update()
 MANEJO_SHOT = SHOT["name"].startswith("manejo") or SHOT["name"] == "rueda_gira"
@@ -165,10 +165,10 @@ def aplastar_llantas():
         cy = (mw @ Vector(o.bound_box[0]).lerp(Vector(o.bound_box[6]), 0.5)).y
         for v in o.data.vertices:
             w = mw @ v.co
-            if w.z < 0.075:
-                if w.z < 0.0015:
-                    w.z = 0.0015                                   # parche plano pegado al piso
-                bulge = (0.075 - max(w.z, 0.0)) / 0.075 * 0.007     # costado abombado (hasta 7 mm)
+            if w.z < 0.10:
+                if w.z < 0.003:
+                    w.z = 0.003                                    # parche plano pegado al piso
+                bulge = ((0.10 - max(w.z, 0.0)) / 0.10) ** 1.5 * 0.016   # costado abombado (hasta 1.6 cm)
                 w.y += bulge if w.y > cy else -bulge
                 v.co = inv @ w
                 n += 1
@@ -242,7 +242,8 @@ def luz_mat(m, p, nm):
     # 2) las micas son vidrio físico: reflejan y dejan ver el interior (no fantasma semitransparente)
     if cover and not drl and not p.inputs["Alpha"].is_linked:
         bc = p.inputs["Base Color"]
-        if not bc.is_linked and sum(bc.default_value[:3]) < 0.3 and not any(k in nm for k in ("black", "balck", "tint", "smoke", "spoiler")):
+        if not bc.is_linked and sum(bc.default_value[:3]) < 0.3 and p.inputs["Metallic"].default_value > 0.5 \
+                and not any(k in nm for k in ("black", "balck", "tint", "smoke", "spoiler")):
             bc.default_value = (1, 1, 1, 1)   # mica "negra" de exportación = en realidad transparente
         p.inputs["Alpha"].default_value = 1.0
         p.inputs["Transmission Weight"].default_value = 1.0
@@ -319,6 +320,13 @@ if not pintura and area:   # sin nombres útiles: el material más grande que no
     cand = [m for m in sorted(area, key=lambda x: -area[x]) if not tiene(m.lower(), NO_PINTURA)]
     pintura = set(cand[:1])
 rines = set(OVR.get("rin", [])) or {m for m in area if tiene(m.lower(), ("rim", "wheel", "rin_", "felge")) and not tiene(m.lower(), ("tire", "tyre", "rubber", "llanta", "brake", "caliper", "disc", "steer", "volante", "bolt", "nut"))}
+if not OVR.get("rin"):
+    _NO_RIN = ("tire", "tyre", "rubber", "llanta", "brake", "caliper", "disc", "steer", "volante", "bolt", "nut", "glass", "light", "paint", "interior")
+    for o in meshes(objs):
+        if tiene(o.name.lower(), ("rim", "wheel", "felge")) and not any(k in o.name.lower() for k in ("steer", "volante", "spare", "arch")):
+            for sl in o.material_slots:
+                if sl.material and not tiene(sl.material.name.lower(), _NO_RIN):
+                    rines.add(sl.material.name)
 calipers = set(OVR.get("caliper", [])) or {m for m in area if tiene(m.lower(), ("caliper", "brake_c", "pinza", "bremssattel"))}
 print("PINTURA", sorted(pintura), "RINES", sorted(rines), "CALIPERS", sorted(calipers), "LIVERY", LIV)
 
@@ -405,7 +413,8 @@ if LIV in LIVERIES:
                     mm = nt.nodes.new("ShaderNodeMath"); mm.operation = "MULTIPLY"; mm.inputs[1].default_value = cfg["metal"]
                     nt.links.new(inv.outputs[0], mm.inputs[0]); nt.links.new(mm.outputs[0], p.inputs["Metallic"])
         elif m.name in rines:
-            color_fijo(p, cfg["rin"], cfg["rin_metal"], 0.22)
+            color_fijo(p, cfg["rin"], max(cfg["rin_metal"], 0.6), 0.12)
+            p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.05
         elif m.name in calipers:
             color_fijo(p, cfg["caliper"], 0.0, 0.35)
 
@@ -421,20 +430,31 @@ def _n(nt, tipo, **kw):
 
 
 def pintura_real(m, p):
-    """orange peel (piel de naranja) en la laca + micro-rayones/swirls que solo se ven en los brillos"""
+    """laca MUY brillante (coat 0.03) con orange peel; swirls finos en el relieve; polvo en la parte baja"""
     nt = m.node_tree; L_ = nt.links.new
     tc = _n(nt, "ShaderNodeTexCoord", object=ref)   # metros reales (el objeto importado puede estar en cm)
     peel = _n(nt, "ShaderNodeTexNoise", i_Scale=420.0, i_Detail=1.0, i_Roughness=0.5)
     L_(tc.outputs["Object"], peel.inputs["Vector"])
-    bump = _n(nt, "ShaderNodeBump", i_Strength=0.02, i_Distance=0.0002)
-    L_(peel.outputs["Fac"], bump.inputs["Height"])
-    L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
-    vor = _n(nt, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", i_Scale=60.0)
+    vor = _n(nt, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", i_Scale=45.0)
     L_(tc.outputs["Object"], vor.inputs["Vector"])
-    ray = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.006, i_To_Min=0.07, i_To_Max=0.02)
-    L_(vor.outputs["Distance"], ray.inputs["Value"])
-    L_(ray.outputs["Result"], p.inputs["Coat Roughness"])
+    sw = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.004, i_To_Min=1.0, i_To_Max=0.0)
+    L_(vor.outputs["Distance"], sw.inputs["Value"])
+    alt = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); alt.inputs[1].default_value = 0.15   # peel + swirls como relieve
+    L_(sw.outputs["Result"], alt.inputs[0]); L_(peel.outputs["Fac"], alt.inputs[2])
+    bump = _n(nt, "ShaderNodeBump", i_Strength=0.025, i_Distance=0.0002)
+    L_(alt.outputs[0], bump.inputs["Height"])
+    L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
+    # polvo en estribos/defensas (abajo de 35 cm): ahí la laca se ve un poco más opaca
+    sep = _n(nt, "ShaderNodeSeparateXYZ"); L_(tc.outputs["Object"], sep.inputs[0])
+    baja = _n(nt, "ShaderNodeMapRange", i_From_Min=0.35, i_From_Max=0.08, i_To_Min=0.0, i_To_Max=1.0)
+    L_(sep.outputs["Z"], baja.inputs["Value"])
+    nz = _n(nt, "ShaderNodeTexNoise", i_Scale=7.0, i_Detail=8.0); L_(tc.outputs["Object"], nz.inputs["Vector"])
+    md = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); L_(baja.outputs["Result"], md.inputs[0]); L_(nz.outputs["Fac"], md.inputs[1])
+    cr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.03, i_To_Max=0.22)
+    L_(md.outputs[0], cr.inputs["Value"]); L_(cr.outputs["Result"], p.inputs["Coat Roughness"])
     p.inputs["Coat Weight"].default_value = 1.0
+    p.inputs["Coat IOR"].default_value = 1.5
+    p.inputs["Specular IOR Level"].default_value = 0.12   # el brillo lo da la laca, no la base (quita la neblina gris)
 
 
 def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
@@ -443,7 +463,7 @@ def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
     tc = _n(nt, "ShaderNodeTexCoord", object=ref)
     nz = _n(nt, "ShaderNodeTexNoise", i_Scale=escala, i_Detail=6.0)
     L_(tc.outputs["Object"], nz.inputs["Vector"])
-    mr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.42, i_From_Max=0.7, i_To_Min=0.0, i_To_Max=cantidad)
+    mr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.35, i_From_Max=0.65, i_To_Min=0.0, i_To_Max=cantidad)
     L_(nz.outputs["Fac"], mr.inputs["Value"])
     mix = _n(nt, "ShaderNodeMix", data_type="RGBA")
     L_(mr.outputs["Result"], mix.inputs["Factor"])
@@ -469,9 +489,9 @@ for m in bpy.data.materials:
     if es_pintura:
         pintura_real(m, p)
     elif any(k in nm for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen")) and not tiene(nm, ("rim",)):
-        ensuciar(m, p, (0.20, 0.18, 0.15), 0.35, 0.15, 9.0)          # polvo gris en la goma
+        ensuciar(m, p, (0.24, 0.22, 0.19), 0.6, 0.2, 9.0)          # polvo gris en la goma
     elif m.name in rines or (tiene(nm, ("rim", "wheel")) and not any(k in nm for k in ("tire", "tyre", "rubber"))):
-        ensuciar(m, p, (0.09, 0.075, 0.06), 0.45, 0.12, 14.0)        # brake dust en los rines
+        ensuciar(m, p, (0.13, 0.11, 0.09), 0.7, 0.05, 14.0)        # brake dust en los rines
     elif any(k in nm for k in ("disc", "rotor")):
         ensuciar(m, p, (0.12, 0.07, 0.04), 0.5, 0.2, 20.0)           # discos con óxido ligero
     elif any(k in nm for k in K_VENT) and not any(k in nm for k in K_LUZ):
@@ -517,6 +537,13 @@ else:
         wl.new(envs.outputs["Color"], fill.inputs["Color"])
         fill.inputs["Strength"].default_value = PLAN.get("hdri_estudio_fuerza", 1.0)
         print("HDRI estudio para reflejos:", PLAN["hdri_estudio"])
+    if PLAN.get("hdri_estudio") and os.path.exists(PLAN["hdri_estudio"]):
+        refl = wn.new("ShaderNodeBackground"); wl.new(envs.outputs["Color"], refl.inputs["Color"])
+        refl.inputs["Strength"].default_value = PLAN.get("hdri_reflejo_fuerza", 3.0)
+        lpg = wn.new("ShaderNodeLightPath"); mg = wn.new("ShaderNodeMixShader")
+        wl.new(lpg.outputs["Is Glossy Ray"], mg.inputs["Fac"])
+        wl.new(fill.outputs["Background"], mg.inputs[1]); wl.new(refl.outputs["Background"], mg.inputs[2])
+        fill = type("F", (), {"outputs": {"Background": mg.outputs["Shader"]}})()
     lp = wn.new("ShaderNodeLightPath"); mix = wn.new("ShaderNodeMixShader")
     wl.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
     wl.new(fill.outputs["Background"], mix.inputs[1])   # relleno tenue para que nada quede 100% negro
@@ -534,7 +561,7 @@ tc = nt.nodes.new("ShaderNodeTexCoord")
 # textura sutil del piso que se desplaza en las tomas "manejando" (da sensación de velocidad en los reflejos)
 mpf = nt.nodes.new("ShaderNodeMapping"); nz = nt.nodes.new("ShaderNodeTexNoise")
 nz.inputs["Scale"].default_value = 1.6; nz.inputs["Detail"].default_value = 8
-rr = nt.nodes.new("ShaderNodeMapRange"); rr.inputs["To Min"].default_value = 0.12; rr.inputs["To Max"].default_value = 0.28
+rr = nt.nodes.new("ShaderNodeMapRange"); rr.inputs["To Min"].default_value = 0.24; rr.inputs["To Max"].default_value = 0.40
 nt.links.new(tc.outputs["Object"], mpf.inputs["Vector"]); nt.links.new(mpf.outputs["Vector"], nz.inputs["Vector"])
 nt.links.new(nz.outputs["Fac"], rr.inputs["Value"]); nt.links.new(rr.outputs["Result"], P.inputs["Roughness"])
 vl = nt.nodes.new("ShaderNodeVectorMath"); vl.operation = "LENGTH"
@@ -556,7 +583,7 @@ nt.links.new(mx_ao.outputs[0], ms.inputs["Fac"])
 smg = nt.nodes.new("ShaderNodeTexNoise"); smg.inputs["Scale"].default_value = 1.2; smg.inputs["Detail"].default_value = 10
 nt.links.new(tc.outputs["Object"], smg.inputs["Vector"])
 smr = nt.nodes.new("ShaderNodeMapRange"); smr.inputs["From Min"].default_value = 0.55; smr.inputs["From Max"].default_value = 0.75
-smr.inputs["To Min"].default_value = 0.0; smr.inputs["To Max"].default_value = 0.09
+smr.inputs["To Min"].default_value = 0.0; smr.inputs["To Max"].default_value = 0.18
 nt.links.new(smg.outputs["Fac"], smr.inputs["Value"])
 near = nt.nodes.new("ShaderNodeMapRange"); near.inputs["From Min"].default_value = 2.0; near.inputs["From Max"].default_value = 4.5
 near.inputs["To Min"].default_value = 1.0; near.inputs["To Max"].default_value = 0.0
@@ -566,7 +593,7 @@ nt.links.new(smr.outputs["Result"], smm.inputs[0]); nt.links.new(near.outputs["R
 rsum = nt.nodes.new("ShaderNodeMath"); rsum.operation = "ADD"
 nt.links.new(rr.outputs["Result"], rsum.inputs[0]); nt.links.new(smm.outputs[0], rsum.inputs[1])
 nt.links.new(rsum.outputs[0], P.inputs["Roughness"])
-P.inputs["Specular IOR Level"].default_value = 0.3
+P.inputs["Specular IOR Level"].default_value = 0.22
 
 
 def ciclorama(R0=7.0, Rc=4.5, Hw=14.0, seg=128):
@@ -850,7 +877,7 @@ if manejo and ESC == "estudio":
     girar_ruedas(VEL)
     tiras_en_movimiento(VEL)
 elif not manejo:
-    dirigir_ruedas(PLAN.get("direccion", 13))
+    dirigir_ruedas(PLAN.get("direccion", 22))
 if t == "trasera":        # 3/4 trasero bajo, sube, calaveras encendidas
     toma((B - 3.2, -Y - 2.6, 0.45), (B - 2.8, -Y - 2.2, 1.1), (B + 0.4, -Y * 0.4, 0.6), (B + 0.5, -Y * 0.3, 0.75), (55, 60), 3.5)
 elif t == "faro":         # detalle del faro, deslizamiento

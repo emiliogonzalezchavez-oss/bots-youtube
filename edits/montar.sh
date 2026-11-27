@@ -37,7 +37,7 @@ esac
 DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 tomas.mp4)
 FADE=$(python3 -c "print(max(0, $DUR - 0.6))")
 ffmpeg -y -loglevel error -i tomas.mp4 -ss "$START" -i "$MUSIC" \
-  -filter_complex "[0:v]$GRADE,rgbashift=rh=-2:bh=2,vignette=PI/5,noise=alls=7:allf=t+u,format=yuv420p[v];[1:a]atrim=0:$DUR,afade=t=out:st=$FADE:d=0.6[a]" \
+  -filter_complex "[0:v]$GRADE,rgbashift=rh=-2:bh=2,vignette=PI/5,curves=all='0/0.025 1/1',noise=alls=9:allf=t+u,format=yuv420p[v];[1:a]atrim=0:$DUR,afade=t=out:st=$FADE:d=0.6[a]" \
   -map "[v]" -map "[a]" -c:v libx264 -preset slow -crf 18 -maxrate 14M -bufsize 28M -c:a aac -b:a 192k -movflags +faststart -shortest "$OUT"
 ffmpeg -y -loglevel error -i "$OUT" -vf "fps=2,scale=216:-1,tile=8x4" -frames:v 1 "${OUT%.mp4}_hoja.jpg"
 echo "LISTO $OUT ($DUR s, color $COLOR)"
