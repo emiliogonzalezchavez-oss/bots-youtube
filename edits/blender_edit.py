@@ -457,8 +457,8 @@ def pintura_real(m, p):
     cr = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.03, i_To_Max=0.22)
     L_(md.outputs[0], cr.inputs["Value"])
     salida = cr.outputs["Result"]
-    if m.name in MASCARA_FRANJA:   # franjas de vinil satinado: no reflejan como espejo (evita los bordes grises)
-        fm = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); fm.inputs[1].default_value = 0.32
+    if m.name in MASCARA_FRANJA:   # franjas negro brillante (satinado se veía gris plata con el HDRI)
+        fm = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); fm.inputs[1].default_value = 0.06
         L_(MASCARA_FRANJA[m.name], fm.inputs[0])
         mxr = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(salida, mxr.inputs[0]); L_(fm.outputs[0], mxr.inputs[1])
         salida = mxr.outputs[0]
