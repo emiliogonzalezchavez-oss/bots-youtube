@@ -21,6 +21,10 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
 - Antes de usar un coche nuevo: investigar cómo se ve modificado/deportivo y llenar `estilos` en modelos.json.
 - Revisar SIEMPRE de cerca: faros/calaveras (micas = vidrio transparente, solo brillan LEDs/DRL, direccionales y reversa
   apagadas, rojo puro sin rosa), reflejos de la pintura (no plástico, no lavada), llantas tocando el piso, cámara nunca dentro del coche.
+- Realismo obligatorio (pedido del dueño): ciclorama curvo (sin línea de horizonte), softboxes con forma/degradado en los
+  reflejos (tarjetas), orange peel + swirls en la laca, polvo en llantas y brake dust, huellas en el piso, ventanas que dejan
+  ver el interior, llantas aplastadas con sombra de contacto (AO), ruedas delanteras giradas, DOF real, sin brillos quemados
+  planos, acabado con grano + aberración cromática + viñeteo (post_foto.py en stills, montar.sh en video), JPG con EXIF.
 - Look estudio: exposición -0.5, luces x0.6, HDRI de estudio fuerza 1.0, AgX Punchy con livery.
 - No meter contraseñas/tokens en webs; el dueño pega los secretos él mismo.
 
