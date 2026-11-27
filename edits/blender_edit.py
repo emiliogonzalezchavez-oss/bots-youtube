@@ -577,29 +577,38 @@ def ciclorama(R0=7.0, Rc=4.5, Hw=14.0, seg=128):
         a = math.radians(90 * i / 16)
         prof.append((R0 + Rc * math.sin(a), Rc * (1 - math.cos(a))))
     prof.append((R0 + Rc, Hw))
-    bm = bmesh.new()
-    cen = bm.verts.new((0, 0, 0))
-    rings = [[bm.verts.new((r * math.cos(2 * math.pi * j / seg), r * math.sin(2 * math.pi * j / seg), z)) for r, z in prof] for j in range(seg)]
-    for j in range(seg):
-        a_, b_ = rings[j], rings[(j + 1) % seg]
-        bm.faces.new((cen, a_[0], b_[0]))
-        for i in range(len(prof) - 1):
-            bm.faces.new((a_[i], a_[i + 1], b_[i + 1], b_[i]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    me = bpy.data.meshes.new("Ciclorama"); bm.to_mesh(me); bm.free()
-    if me.polygons[0].normal.z < 0:
-        for pg in me.polygons:
-            pg.flip()
-    for pg in me.polygons:
-        pg.use_smooth = True
-    return link(bpy.data.objects.new("Ciclorama", me))
+    def malla(nombre, desde, hasta, centro):
+        bm = bmesh.new()
+        cen = bm.verts.new((0, 0, 0)) if centro else None
+        sub = prof[desde:hasta + 1]
+        rings = [[bm.verts.new((r * math.cos(2 * math.pi * j / seg), r * math.sin(2 * math.pi * j / seg), z)) for r, z in sub] for j in range(seg)]
+        for j in range(seg):
+            a_, b_ = rings[j], rings[(j + 1) % seg]
+            if centro:
+                bm.faces.new((cen, a_[0], b_[0]))
+            for i in range(len(sub) - 1):
+                bm.faces.new((a_[i], a_[i + 1], b_[i + 1], b_[i]))
+        me = bpy.data.meshes.new(nombre); bm.to_mesh(me); bm.free()
+        for pg in me.polygons:   # normales hacia adentro/arriba
+            c = pg.center
+            if Vector((-c.x, -c.y, 3.0 - c.z)).dot(pg.normal) < 0:
+                pg.flip()
+            pg.use_smooth = True
+        return link(bpy.data.objects.new(nombre, me))
+    i0 = len([1 for r, z in prof if z == 0.0]) - 1
+    piso_o = malla("Piso", 0, i0, True)
+    cur = malla("Curva", i0, len(prof) - 1, False)
+    # la curva/pared la ve la cámara, pero NO tapa el HDRI de estudio en los reflejos de la pintura
+    cur.visible_glossy = False; cur.visible_diffuse = False
+    return piso_o, cur
 
 
 if ESC == "exterior":
     bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
     suelo = bpy.context.object
 else:
-    suelo = ciclorama()
+    suelo, curva = ciclorama()
+    curva.data.materials.append(piso)
     # oscurece gradual con distancia + altura: piso -> curva -> pared, sin corte
     sep = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(tc.outputs["Object"], sep.inputs[0])
     zz = nt.nodes.new("ShaderNodeMath"); zz.operation = "MULTIPLY_ADD"
@@ -651,7 +660,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
         st = borde(fr.outputs[0], 8.0)
         m2 = tn.nodes.new("ShaderNodeMath"); m2.operation = "MULTIPLY"; L_(sock, m2.inputs[0]); L_(st, m2.inputs[1]); sock = m2.outputs[0]
     k_ = tn.nodes.new("ShaderNodeMath"); k_.operation = "MULTIPLY"
-    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 0.6   # misma brillantez que la luz de área
+    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 1.0   # misma brillantez que la luz de área
     L_(sock, k_.inputs[0]); L_(k_.outputs[0], em.inputs["Strength"])
     em.inputs["Color"].default_value = (*color, 1)
     L_(em.outputs["Emission"], o_.inputs["Surface"])
@@ -661,6 +670,15 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
     pl.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("Z", "Y").to_euler()
     pl.data.materials.append(mt)
     pl.visible_camera = False; pl.visible_diffuse = False; pl.visible_shadow = False
+    try:
+        rc = bpy.data.collections.get("Receptores")
+        if rc is None:
+            rc = bpy.data.collections.new("Receptores")
+            for o_ in meshes(objs):
+                rc.objects.link(o_)
+        pl.light_linking.receiver_collection = rc
+    except Exception as e:
+        print("sin light linking:", e)
     pl.visible_volume_scatter = False; pl.visible_transmission = True
     return pl
 
@@ -669,7 +687,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
 PLAN.setdefault("tiras_Cenital", 3)
 softbox("Cenital", (0.3, 0, H + 3.2), 2.2, L * 1.25, 1100, (0.3, 0, 0))
 # luz tenue dentro de la cabina: por las ventanas se distingue el volante y los asientos
-_li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 4 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.6
+_li = bpy.data.lights.new("Cabina", "POINT"); _li.energy = 2 * PLAN.get("luz", 0.6 if PLAN.get("hdri_estudio") else 1.0); _li.shadow_soft_size = 0.6
 _lo = link(bpy.data.objects.new("Cabina", _li)); _lo.location = ((mn.x + mx.x) / 2 - L * 0.08, 0, H * 0.7)
 _lo.visible_glossy = False; _lo.visible_camera = False
 softbox("TiraIzq", (L * 0.55, W * 2.2, 1.6), 0.5, 3.2, 420, (0, 0, 0.7))
