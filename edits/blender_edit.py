@@ -369,7 +369,8 @@ def mascara_pintura(nt, cfg):
     ay = op("ABSOLUTE", xyz.outputs["Y"], None, False)
     any_ = op("ABSOLUTE", nrm.outputs["Y"], None, False)
     if cfg.get("franjas") == "racing":   # dos franjas por el centro, cofre-techo-cajuela
-        franja = op("MULTIPLY", banda(ay, 0.06, 0.24), op("LESS_THAN", any_, 0.85))
+        # vinil que envuelve todo lo que cae dentro de la banda (sin cortes por inclinación = sin pedazos grises), menos los bajos
+        franja = op("MULTIPLY", banda(ay, 0.06, 0.24), op("GREATER_THAN", nrm.outputs["Z"], -0.6))
     elif cfg.get("franjas") == "lateral":   # franja baja a lo largo del costado
         z = xyz.outputs["Z"]; x = xyz.outputs["X"]
         franja = op("MULTIPLY", op("MULTIPLY", banda(z, 0.27, 0.36), op("GREATER_THAN", any_, 0.45)), banda(x, B + 0.95, F - 1.05))
@@ -492,6 +493,11 @@ def ensuciar(m, p, color, cantidad, rough_add, escala=6.0):
 
 for m in bpy.data.materials:
     p_ = bsdf(m)
+    if p_ and any(k in m.name.lower() for k in ("undercarriage", "underbody", "chassis", "bajos")):
+        for l in list(p_.inputs["Base Color"].links):
+            m.node_tree.links.remove(l)
+        p_.inputs["Base Color"].default_value = (0.015, 0.015, 0.016, 1); p_.inputs["Roughness"].default_value = 0.6
+        p_.inputs["Metallic"].default_value = 0.0   # los bajos del coche nunca se ven gris claro
     if p_ and "reflector" in m.name.lower() and not p_.inputs["Base Color"].is_linked:
         p_.inputs["Base Color"].default_value = (0.22, 0.22, 0.23, 1); p_.inputs["Roughness"].default_value = 0.18
 
