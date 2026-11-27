@@ -660,7 +660,7 @@ def tarjeta(name, loc, sx, sy, energy, target, color, tiras=1):
         st = borde(fr.outputs[0], 8.0)
         m2 = tn.nodes.new("ShaderNodeMath"); m2.operation = "MULTIPLY"; L_(sock, m2.inputs[0]); L_(st, m2.inputs[1]); sock = m2.outputs[0]
     k_ = tn.nodes.new("ShaderNodeMath"); k_.operation = "MULTIPLY"
-    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 1.0   # misma brillantez que la luz de área
+    k_.inputs[1].default_value = energy / (math.pi * sx * sy) * 1.6   # misma brillantez que la luz de área
     L_(sock, k_.inputs[0]); L_(k_.outputs[0], em.inputs["Strength"])
     em.inputs["Color"].default_value = (*color, 1)
     L_(em.outputs["Emission"], o_.inputs["Surface"])
