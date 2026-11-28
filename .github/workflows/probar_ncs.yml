@@ -10,7 +10,9 @@ jobs:
           from libres import es_libre
           casos = [("Sub Urban", "Cradles"), ("Alan Walker", "Fade"), ("DEAF KEV", "Invincible"), ("Warriyo, Laura Brehm", "Mortals"),
                    ("Egzod, Maestro Chives, Neoni", "Royalty (Slowed)"), ("Janji, Johnning", "Heroes Tonight"),
-                   ("Adele", "Skyfall"), ("FloyyMenor & Cris MJ", "Gata Only (Slowed)"), ("373 Inc.", "Back That up to the Beat")]
+                   ("Adele", "Skyfall"), ("Otro Artista", "Mortals (Slowed)"), ("FloyyMenor & Cris MJ", "Gata Only (Slowed)"), ("373 Inc.", "Back That up to the Beat")]
+          from libres import buscar_ncs
+          print("FADE:", [(f["titulo"], f["artistas"]) for f in buscar_ncs("Fade")][:8])
           for a, t in casos:
               print(f"{a} — {t}:", es_libre(a, t, {}), flush=True)
           PY

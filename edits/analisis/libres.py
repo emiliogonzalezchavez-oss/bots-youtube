@@ -43,8 +43,9 @@ def es_libre(artista, titulo, cache):
         musica = json.load(open(os.path.join(AQUI, "..", "musica.json"), encoding="utf-8"))
         for m in (musica if isinstance(musica, list) else musica.values()):
             nombre = m.get("titulo") or m.get("nombre") or m.get("title") or ""
-            t = nombre.split(" - ", 1)[-1]
-            if norm(titulo) and norm(t) == norm(titulo):
+            a_m, _, t = nombre.rpartition(" - ")
+            mismo_artista = not artista or not a_m or (artistas(artista) & artistas(a_m))
+            if norm(titulo) and norm(t) == norm(titulo) and mismo_artista:
                 res = ("libre", ("NCS: " if "ncs.io" in str(m.get("pagina", "")) else "musica.json: ") + str(m.get("pagina", nombre)))
                 break
     except Exception:
