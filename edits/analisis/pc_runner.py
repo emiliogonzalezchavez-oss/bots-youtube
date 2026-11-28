@@ -188,8 +188,17 @@ except KeyboardInterrupt:
         p.terminate()
 finally:
     hilo.join(timeout=120)
+    n = empacar()   # zip con todo lo medido ANTES de la pasada larga de canciones
+    print(f"\n=== Medición terminada: {n} edits en resultados.zip ===\n", flush=True)
     if os.path.isdir(CLIPS) and os.listdir(CLIPS):
-        print(f"Reconociendo {len(os.listdir(CLIPS))} canciones pendientes con Shazam...")
+        print(f"Reconociendo {len(os.listdir(CLIPS))} canciones pendientes con Shazam (el zip se actualiza cada 10 min)...")
+        parar = threading.Event()
+
+        def zip_periodico():
+            while not parar.wait(600):
+                empacar()
+        threading.Thread(target=zip_periodico, daemon=True).start()
         canciones_pendientes(final=True)
+        parar.set()
     n = empacar()
     print(f"\nListo: {n} edits medidos en resultados.zip. Avísale a Claude.")
