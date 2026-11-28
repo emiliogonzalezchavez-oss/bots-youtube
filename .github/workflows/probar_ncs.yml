@@ -8,6 +8,11 @@ jobs:
           for q in Mortals "Back That up to the Beat" Skyfall; do
             echo "=== $q"
             curl -sL -A "Mozilla/5.0" "https://ncs.io/music-search?q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")" -o p.html -w "%{http_code} %{size_download}\n"
-            grep -o 'data-tid="[^"]*"\|data-track="[^"]*"\|data-artistraw="[^"]*"\|<p>[^<]\{2,80\}</p>' p.html | head -12
-            grep -o 'class="[^"]*player-play[^"]*"[^>]\{0,400\}' p.html | head -3
+            python3 - "$q" <<'PY'
+          import re, sys, html
+          s = open("p.html", encoding="utf-8", errors="ignore").read()
+          q = sys.argv[1].split()[0]
+          for m in list(re.finditer(re.escape(q), s))[:4]:
+              print("...", re.sub(r"\s+", " ", s[max(0, m.start()-300):m.start()+200]), "...\n")
+          PY
           done
