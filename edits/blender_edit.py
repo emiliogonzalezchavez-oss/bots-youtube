@@ -147,7 +147,7 @@ mn, mx = bbox_robusto(objs)
 _ll = [o for o in meshes(objs) if any(k in (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
                                       for k in ("tire", "tyre", "rubber", "llanta", "neum", "reifen", "wheel"))]
 _zl = min((o.matrix_world @ v.co).z for o in _ll for v in o.data.vertices) if _ll else bbox(objs)[0].z
-car.location.z -= _zl + 0.025
+car.location.z -= _zl + 0.03
 print(f"APOYO llantas={len(_ll)} z_llanta={_zl:.3f} z_min_total={bbox(objs)[0].z:.3f}")
 bpy.context.view_layer.update()
 MANEJO_SHOT = SHOT["name"].startswith("manejo") or SHOT["name"] == "rueda_gira"
@@ -528,6 +528,14 @@ for o in meshes(objs):
         except Exception:
             pass
 
+for m in bpy.data.materials:
+    p_ = bsdf(m)
+    if p_ and not p_.inputs["Base Color"].is_linked and m.name not in pintura and m.name not in rines \
+            and all(abs(v - 0.8) < 0.02 for v in p_.inputs["Base Color"].default_value[:3]) \
+            and not any(k in m.name.lower() for k in ("glass", "light", "lens", "chrome", "white", "mirror", "interior", "seat")):
+        p_.inputs["Base Color"].default_value = (0.015, 0.015, 0.016, 1); p_.inputs["Roughness"].default_value = 0.55
+        print("DEFAULT->negro", m.name)
+
 K_VENT = ("glass", "window", "windshield", "windscreen", "vidrio", "cristal", "parabrisas")
 for m in bpy.data.materials:
     p = bsdf(m)
@@ -540,7 +548,7 @@ for m in bpy.data.materials:
     elif (any(k in nm for k in ("tire", "tyre", "llanta", "neum", "reifen"))
           or ("rubber" in nm and all(any(k in o.name.lower() for k in ("tire", "tyre", "wheel", "llanta")) for o in meshes(objs)
                                      if any(sl.material == m for sl in o.material_slots)))) and not tiene(nm, ("rim",)):
-        ensuciar(m, p, (0.24, 0.22, 0.19), 0.6, 0.2, 9.0)          # polvo gris en la goma
+        material_llanta(m)          # banda/costado + polvo por cavidades
     elif m.name in rines or (tiene(nm, ("rim", "wheel")) and not any(k in nm for k in ("tire", "tyre", "rubber"))):
         ensuciar(m, p, (0.13, 0.11, 0.09), 0.7, 0.05, 14.0)        # brake dust en los rines
     elif any(k in nm for k in ("disc", "rotor")):
@@ -803,6 +811,123 @@ for o in meshes(objs):
             RUEDAS.append(o)
 
 
+K_LL = ("tire", "tyre", "llanta", "neum", "reifen", "pneu")
+
+
+def grupos_ruedas():
+    gs = []
+    for o in RUEDAS:
+        c = sum(bbox([o]), Vector()) / 2
+        g = next((g_ for g_ in gs if (g_[0] - c).length < 0.35), None)
+        if g: g[1].append(o)
+        else: gs.append([c, [o]])
+    return gs
+
+
+def material_llanta(m):
+    """llanta real: banda mate (0.85) y costado con brillo leve (0.5); polvo café-gris en ranuras (AO/pointiness) y abajo"""
+    p = bsdf(m)
+    if not p or m.get("llanta_ok"):
+        return
+    m["llanta_ok"] = True
+    nt = m.node_tree; L_ = nt.links.new
+    geo = _n(nt, "ShaderNodeNewGeometry"); sn = _n(nt, "ShaderNodeSeparateXYZ"); L_(geo.outputs["Normal"], sn.inputs[0])
+    ay = _n(nt, "ShaderNodeMath", operation="ABSOLUTE"); L_(sn.outputs["Y"], ay.inputs[0])
+    cost = _n(nt, "ShaderNodeMapRange", i_From_Min=0.55, i_From_Max=0.85, i_To_Min=0.0, i_To_Max=1.0); L_(ay.outputs[0], cost.inputs["Value"])
+    rg = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.85, i_To_Max=0.5); L_(cost.outputs["Result"], rg.inputs["Value"])
+    # polvo: cavidades (AO + pointiness) y parte baja, cortado con ruido; color café-gris
+    ao = _n(nt, "ShaderNodeAmbientOcclusion", samples=8, i_Distance=0.025)
+    inv = _n(nt, "ShaderNodeMath", operation="SUBTRACT"); inv.inputs[0].default_value = 1.0; L_(ao.outputs["AO"], inv.inputs[1])
+    pt = _n(nt, "ShaderNodeMapRange", i_From_Min=0.5, i_From_Max=0.42, i_To_Min=0.0, i_To_Max=1.0); L_(geo.outputs["Pointiness"], pt.inputs["Value"])
+    cav = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(inv.outputs[0], cav.inputs[0]); L_(pt.outputs["Result"], cav.inputs[1])
+    tc = _n(nt, "ShaderNodeTexCoord", object=ref); sz = _n(nt, "ShaderNodeSeparateXYZ"); L_(tc.outputs["Object"], sz.inputs[0])
+    abajo = _n(nt, "ShaderNodeMapRange", i_From_Min=0.45, i_From_Max=0.05, i_To_Min=0.15, i_To_Max=0.6); L_(sz.outputs["Z"], abajo.inputs["Value"])
+    suma = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); suma.inputs[1].default_value = 0.8
+    L_(cav.outputs[0], suma.inputs[0]); L_(abajo.outputs["Result"], suma.inputs[2])
+    nz = _n(nt, "ShaderNodeTexNoise", i_Scale=35.0, i_Detail=4.0); L_(tc.outputs["Object"], nz.inputs["Vector"])
+    nzm = _n(nt, "ShaderNodeMapRange", i_From_Min=0.35, i_From_Max=0.65, i_To_Min=0.55, i_To_Max=1.0); L_(nz.outputs["Fac"], nzm.inputs["Value"])
+    pol = _n(nt, "ShaderNodeMath", operation="MULTIPLY", use_clamp=True); L_(suma.outputs[0], pol.inputs[0]); L_(nzm.outputs["Result"], pol.inputs[1])
+    mix = _n(nt, "ShaderNodeMix", data_type="RGBA"); L_(pol.outputs[0], mix.inputs["Factor"])
+    bc = p.inputs["Base Color"]
+    if bc.is_linked:
+        L_(bc.links[0].from_socket, mix.inputs[6])
+    else:
+        mix.inputs[6].default_value = (0.025, 0.025, 0.027, 1)
+    mix.inputs[7].default_value = (0.30, 0.25, 0.19, 1)
+    L_(mix.outputs[2], bc)
+    rpol = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(rg.outputs["Result"], rpol.inputs[0])
+    rp2 = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); rp2.inputs[1].default_value = 0.95; L_(pol.outputs[0], rp2.inputs[0])
+    L_(rp2.outputs[0], rpol.inputs[1])
+    for l in list(p.inputs["Roughness"].links):
+        nt.links.remove(l)
+    L_(rpol.outputs[0], p.inputs["Roughness"])
+    p.inputs["Specular IOR Level"].default_value = 0.35; p.inputs["Metallic"].default_value = 0.0
+
+
+def ruedas_reales():
+    """pasarruedas, frenos visibles, 4 rines iguales, llantas con material real"""
+    gs = grupos_ruedas()
+    cx = (mn.x + mx.x) / 2
+    mat_pr = bpy.data.materials.new("Pasarruedas"); mat_pr.use_nodes = True
+    pp = mat_pr.node_tree.nodes["Principled BSDF"]
+    pp.inputs["Base Color"].default_value = (0.012, 0.012, 0.013, 1); pp.inputs["Roughness"].default_value = 0.92
+    rin_frente = None
+    for c, obs in gs:
+        llantas = [o for o in obs if any(k in txt(o) for k in K_LL)] or obs
+        a_, b_ = bbox(llantas); R = (b_.z - a_.z) / 2; wt = b_.y - a_.y
+        lado = 1 if c.y > 0 else -1
+        # forro del pasarruedas: arco detrás/arriba de la llanta + tapa interior (no se ve hueco negro infinito)
+        import bmesh
+        bm = bmesh.new(); seg = 28; Rr = R + 0.045; ww = wt + 0.07
+        anillos = []
+        for i in range(seg + 1):
+            t = math.radians(-15 + 210 * i / seg)
+            anillos.append([bm.verts.new((c.x + Rr * math.cos(t), c.y + lado * (yy - 0.5) * ww, c.z + Rr * math.sin(t))) for yy in (0.0, 1.0)])
+        for i in range(seg):
+            bm.faces.new((anillos[i][0], anillos[i + 1][0], anillos[i + 1][1], anillos[i][1]))
+        yin = c.y - lado * (ww / 2)
+        cen_v = bm.verts.new((c.x, yin, c.z))
+        circ = [bm.verts.new((c.x + Rr * math.cos(2 * math.pi * i / 40), yin, c.z + Rr * math.sin(2 * math.pi * i / 40))) for i in range(40)]
+        for i in range(40):
+            bm.faces.new((cen_v, circ[i], circ[(i + 1) % 40]))
+        me = bpy.data.meshes.new("Pasarruedas"); bm.to_mesh(me); bm.free()
+        ob = link(bpy.data.objects.new("Pasarruedas", me)); ob.data.materials.append(mat_pr)
+        # rin del eje delantero = referencia para que los 4 sean iguales
+        rines_g = [o for o in obs if not any(k in txt(o) for k in K_LL + ("brake", "caliper", "disc", "rotor", "lug", "nut", "bolt"))]
+        if c.x > cx and rines_g and rin_frente is None:
+            big = max(rines_g, key=lambda o: len(o.data.polygons))
+            rin_frente = max((sl.material for sl in big.material_slots if sl.material), key=lambda mm: area.get(mm.name, 0), default=None)
+        for o in llantas:
+            for sl in o.material_slots:
+                if sl.material and any(k in sl.material.name.lower() for k in K_LL + ("rubber",)):
+                    material_llanta(sl.material)
+    if rin_frente:
+        for c, obs in gs:
+            if c.x > cx:
+                continue
+            for o in obs:
+                if any(k in txt(o) for k in K_LL + ("brake", "caliper", "disc", "rotor", "lug", "nut", "bolt")):
+                    continue
+                big_m = max((sl.material for sl in o.material_slots if sl.material), key=lambda mm: area.get(mm.name, 0), default=None)
+                for sl in o.material_slots:
+                    if sl.material is big_m and big_m is not rin_frente:
+                        sl.material = rin_frente
+        print("RINES iguales a:", rin_frente.name)
+    # frenos: caliper de color (rojo si el estilo lo tenía negro) y disco de acero
+    for m in bpy.data.materials:
+        p = bsdf(m); nm = m.name.lower()
+        if not p:
+            continue
+        if "caliper" in nm or "pinza" in nm:
+            col = (LIVERIES.get(LIV) or {}).get("caliper", (0.55, 0.02, 0.015))
+            if sum(col) < 0.1:
+                col = (0.55, 0.02, 0.015)
+            color_fijo(p, col, 0.0, 0.3); p.inputs["Coat Weight"].default_value = 0.8; p.inputs["Coat Roughness"].default_value = 0.08
+        elif any(k in nm for k in ("brake_disc", "disc", "rotor")) and "light" not in nm:
+            color_fijo(p, (0.32, 0.31, 0.30), 1.0, 0.32)
+    print("RUEDAS reales:", len(gs), "pasarruedas")
+
+
 def _reparent(o, piv):
     mw = o.matrix_world.copy(); o.parent = piv; o.matrix_parent_inverse = Matrix(); o.matrix_world = mw
 
@@ -973,6 +1098,7 @@ def orbita(r, z, a0, a1, mira_, lens, f):
 t = SHOT["name"]
 VEL = SHOT.get("vel", 22.0)
 manejo = t.startswith("manejo") or t == "rueda_gira"
+ruedas_reales()
 if manejo and ESC == "estudio":
     girar_ruedas(VEL)
     tiras_en_movimiento(VEL)
