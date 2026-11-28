@@ -1,116 +1,163 @@
-"""Plan del edit con ritmo de Shorts virales (medido en edits de 1M-112M vistas):
-- gancho en el primer medio segundo: ráfaga de 4-6 micro-tomas de ~0.13 s
-- ritmo irregular: ráfagas cortas + tomas largas para lucir el coche
-- movimiento en cada toma (cámara más rápida, sacudida, coche "manejando")
-- flashes y golpes de zoom en los drops (se aplican al montar)
-- cierre con el mismo plano general del inicio (loop)
+"""Plan del edit con la FÓRMULA medida en 1,933 edits de coches (463 puros, edits/analisis/):
+- el DROP cae tarde: ~40% del video y nunca antes de 7 s (5x más vistas que drop antes de 4 s)
+- antes del drop: construcción lenta, tomas de ~2 s, cámara tranquila
+- ritmo total 0.5-1 corte/s (tomas de 1-2 s), SIN ráfagas de micro-tomas (2.7x más viral)
+- CERO flashes (2x más viral)
+- cortes en el beat solo 30-50% (más de 60% se ve robótico: 5x menos vistas); el corte del drop sí cae exacto
+- duración 16-45 s (por defecto 20 s)
+- sin color frío/teal (3x menos vistas): neutro o cálido
+- sin loop perfecto: el final no repite el inicio
 Uso: python plan.py musica.mp3 plan.json [segundos] [escenario] [color] [livery]
+     python plan.py --puntaje musica.mp3 [segundos]   -> imprime qué tan buena es la canción para la fórmula
 """
 import json, random, sys
 import librosa
 import numpy as np
 
-mp3, out = sys.argv[1], sys.argv[2]
-DUR = float(sys.argv[3]) if len(sys.argv) > 3 else 14.0
-ESC = sys.argv[4] if len(sys.argv) > 4 and sys.argv[4] else random.choice(["estudio", "exterior"])
-COLOR = sys.argv[5] if len(sys.argv) > 5 and sys.argv[5] else random.choice(["teal", "calido", "mono"])
+PUNTAJE = sys.argv[1] == "--puntaje"
+args = sys.argv[2:] if PUNTAJE else sys.argv[1:]
+mp3 = args[0]
+out = None if PUNTAJE else args[1]
+rest = args[1:] if PUNTAJE else args[2:]
+DUR = float(rest[0]) if len(rest) > 0 and rest[0] else 20.0
+ESC = rest[1] if len(rest) > 1 and rest[1] else "estudio"
+COLOR = rest[2] if len(rest) > 2 and rest[2] else random.choice(["neutro", "calido"])
+if COLOR == "teal":   # la fórmula: el color frío baja las vistas
+    COLOR = "neutro"
 FPS = 30
+DROP_FRAC = 0.40
+DROP_MIN = 7.0
 rnd = random.Random()
 
 y, sr = librosa.load(mp3, sr=22050, mono=True)
+dur_total = len(y) / sr
 tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units="time")
 tempo = float(np.atleast_1d(tempo)[0])
+beats = np.array(beats, dtype=float)
 rms = librosa.feature.rms(y=y)[0]
 t_rms = librosa.times_like(rms, sr=sr)
-# DROP: el beat donde el bajo/energía salta más (antes vs después). El edit arranca 4 beats antes
-# para que el drop caiga justo en la primera toma larga (flash + punch).
 S = np.abs(librosa.stft(y, n_fft=2048, hop_length=512))
 graves = S[librosa.fft_frequencies(sr=sr, n_fft=2048) < 150].sum(axis=0)
 t_g = librosa.times_like(graves, sr=sr, hop_length=512)
-dur_total = len(y) / sr
 bl0 = 60 / max(tempo, 60)
 VENT = 4 * bl0
 
 
 def media(arr, t, a, b):
     m = (t >= a) & (t < b)
-    return arr[m].mean() if m.any() else 0.0
+    return float(arr[m].mean()) if m.any() else 0.0
 
 
-DROP_BEATS = 4   # rafaga(2) + abre(2) antes de la primera larga
-best, t0, t_drop = -1, beats[0], None
+# rejilla de puntos de corte: cada beat (en el beat) y la mitad entre beats (fuera del beat)
+grid, en_beat = [], []
+for i, b in enumerate(beats):
+    grid.append(float(b)); en_beat.append(True)
+    if i + 1 < len(beats):
+        grid.append(float((b + beats[i + 1]) / 2)); en_beat.append(False)
+grid = np.array(grid)
+DROP_AT = max(DROP_MIN, DROP_FRAC * DUR)
+
+# DROP: el beat con el salto de graves más grande que deje construir ~DROP_AT s antes y tenga energía después
+mejor = None
 for b in beats:
-    ini = b - DROP_BEATS * bl0
-    if ini < 0 or ini + DUR > dur_total - 0.5:
+    ini, fin = b - DROP_AT, b - DROP_AT + DUR
+    if ini < 0.3 or fin > dur_total - 0.3:
         continue
     antes = media(graves, t_g, b - VENT, b) + 1e-6
-    despues = media(graves, t_g, b, b + VENT)
-    salto = (despues / antes) * media(rms, t_rms, b, b + VENT)   # salto fuerte Y que después pegue duro
-    if salto > best:
-        best, t0, t_drop = salto, min(beats, key=lambda x: abs(x - ini)), b
-if t_drop is None:   # canción sin drop claro: tramo con más energía
-    for b in beats:
-        if b + DUR > dur_total - 0.5:
-            break
-        e = media(rms, t_rms, b, b + DUR)
-        if e > best:
-            best, t0 = e, b
-print(f"drop en {t_drop}s, edit desde {t0:.2f}s" if t_drop else "sin drop claro", file=sys.stderr)
-bs = [b - t0 for b in beats if t0 <= b <= t0 + DUR + 0.01]
-bl = float(np.median(np.diff(bs))) if len(bs) > 2 else 60 / max(tempo, 60)
+    salto = media(graves, t_g, b, b + VENT) / antes
+    energia_despues = media(rms, t_rms, b, b + (DUR - DROP_AT))
+    energia_antes = media(rms, t_rms, ini, b) + 1e-6
+    p = salto * energia_despues * min(energia_despues / energia_antes, 3.0)
+    if mejor is None or p > mejor[0]:
+        mejor = (p, float(b), salto, energia_despues / energia_antes)
+if mejor is None:
+    sys.exit(f"La canción ({dur_total:.0f} s) no deja poner el drop a {DROP_AT:.0f} s con {DUR:.0f} s de edit")
+puntaje, t_drop, salto, contraste = mejor
+if PUNTAJE:
+    print(json.dumps({"puntaje": round(puntaje, 4), "drop_s": round(t_drop, 2), "salto_graves": round(salto, 2),
+                      "contraste": round(contraste, 2), "tempo": round(tempo, 1)}))
+    sys.exit()
 
-DETALLE = ["faro", "rueda", "calavera", "faro", "rueda_gira"]
-LARGAS_E = ["manejo_lado", "trasera", "manejo_frente", "perfil", "frente34", "cenital"]   # estudio
-LARGAS_X = ["trasera", "perfil", "frente34", "cenital", "frente", "barrido"]             # exterior
-CORTAS = ["empuje", "barrido", "rueda_gira", "frente", "calavera", "faro"]
-if ESC == "exterior":
-    DETALLE = [d if d != "rueda_gira" else "rueda" for d in DETALLE]
-    CORTAS = [c if c != "rueda_gira" else "rueda" for c in CORTAS]
-largas = LARGAS_E if ESC == "estudio" else LARGAS_X
+i_drop = int(np.argmin(np.abs(grid - t_drop)))
+paso = float(np.median(np.diff(grid)))          # medio beat
+n_pre = int(round(DROP_AT / paso))
+i0 = i_drop - n_pre
+t0 = float(grid[i0])
+t_fin = t0 + DUR
 
+DETALLE = ["faro", "rueda", "calavera", "perfil"]
+if ESC == "estudio":
+    DROP_SHOT = "manejo_frente"
+    POST = ["manejo_lado", "frente34", "rueda_gira", "trasera", "empuje", "perfil", "frente", "cenital", "barrido", "calavera", "manejo_frente", "faro"]
+else:
+    DROP_SHOT = "frente"
+    POST = ["frente34", "rueda", "trasera", "empuje", "perfil", "cenital", "barrido", "calavera", "faro"]
+FINAL = "trasera"
+
+
+def armar():
+    """Elige los puntos de corte en la rejilla. Antes del drop: tomas de ~2 s; después: ~1-1.5 s.
+    Repite hasta que 30-50% de los cortes caigan en el beat (el del drop siempre en el beat)."""
+    for _ in range(4000):
+        cortes = []
+        i = i0
+        # construcción: tomas largas que terminan EXACTO en el drop
+        while True:
+            k = rnd.choice([7, 8, 9])                       # ~2 s
+            if i + k >= i_drop - 4:
+                cortes.append(i_drop); i = i_drop; break
+            i += k; cortes.append(i)
+        # después del drop: más rápido pero sin ráfagas
+        while True:
+            k = rnd.choice([3, 4, 5, 6])                    # ~0.8-1.6 s
+            t_sig = grid[i + k] if i + k < len(grid) else 1e9
+            if t_sig >= t_fin - 0.8:
+                break
+            i += k; cortes.append(i)
+        tiempos = [grid[c] - t0 for c in cortes]
+        n_cortes = len(cortes)
+        cps = n_cortes / DUR
+        on = np.mean([en_beat[c] for c in cortes])
+        largos = np.diff([0.0] + tiempos + [DUR])
+        if 0.30 <= on <= 0.50 and 0.5 <= cps <= 1.0 and largos.min() >= 0.7:
+            return cortes, tiempos, float(on), cps
+    raise SystemExit("no encontré una combinación de cortes que cumpla la fórmula")
+
+
+cortes, tiempos, frac_beat, cps = armar()
+bordes = [0.0] + tiempos + [DUR]
+frames = [round(b * FPS) for b in bordes]
 shots = []
+n_pre_shots = cortes.index(i_drop) + 1                # tomas antes del drop (la siguiente empieza EN el drop)
+pre = rnd.sample(DETALLE, k=min(len(DETALLE), n_pre_shots))
+while len(pre) < n_pre_shots:
+    pre.append(rnd.choice(DETALLE))
+post = POST[:]
+rnd.shuffle(post)
+for j in range(len(bordes) - 1):
+    fr = frames[j + 1] - frames[j]
+    if j < n_pre_shots:                                  # construcción: cámara tranquila
+        shots.append({"name": pre[j], "frames": fr, "fx": [], "mov": 0.9, "sacudida": 0.004, "vel": 18.0})
+    elif j == n_pre_shots:                               # EL DROP: corte exacto + golpe de zoom (sin flash)
+        shots.append({"name": DROP_SHOT, "frames": fr, "fx": ["punch"], "mov": 1.6, "sacudida": 0.02, "vel": 26.0})
+    elif j == len(bordes) - 2:                           # final distinto del inicio (sin loop perfecto)
+        shots.append({"name": FINAL, "frames": fr, "fx": [], "mov": 1.1, "sacudida": 0.008, "vel": 22.0})
+    else:
+        nm = post.pop() if post else rnd.choice(POST)
+        if shots and nm == shots[-1]["name"]:
+            nm = post.pop() if post else rnd.choice([x for x in POST if x != nm])
+        shots.append({"name": nm, "frames": fr, "fx": [], "mov": 1.5, "sacudida": 0.015, "vel": 24.0})
 
-
-def add(name, frames, fx=(), mov=1.0, sac=0.0, vel=22.0):
-    if frames >= 3:
-        shots.append({"name": name, "frames": int(frames), "fx": list(fx), "mov": mov, "sacudida": sac, "vel": vel})
-
-
-def rafaga(beats_):
-    """beats_ beats repartidos en micro-tomas de ~4 frames, la primera con flash"""
-    total = round(beats_ * bl * FPS)
-    n = max(3, min(6, total // 4))
-    tipos = rnd.sample(DETALLE + CORTAS, n)
-    for i, tp in enumerate(tipos):
-        f = total // n + (1 if i < total % n else 0)
-        add(tp, f, fx=["flash"] if i == 0 else [], mov=2.2, sac=0.03)
-
-
-# Patrón: ráfaga gancho -> plano que abre -> larga (drop con flash+zoom) -> cortas -> ráfaga -> larga -> cortas -> cierre
-usado = 0.0
-patron = [("rafaga", 2), ("abre", 2), ("larga", 4), ("corta", 1), ("corta", 1), ("rafaga", 1),
-          ("larga", 4), ("corta", 2), ("corta", 1), ("corta", 1), ("rafaga", 1), ("larga", 2), ("cierre", 2)]
-li = ci = 0
-for kind, nb in patron:
-    if usado + nb * bl > DUR + 0.01:
-        break
-    fr = round(nb * bl * FPS)
-    if kind == "rafaga":
-        rafaga(nb)
-    elif kind == "abre":
-        add("abre", fr, fx=["punch"], mov=1.0, sac=0.015)
-    elif kind == "larga":
-        add(largas[li % len(largas)], fr, fx=["flash", "punch"] if li == 0 else ["punch"], mov=1.6, sac=0.02); li += 1
-    elif kind == "corta":
-        add(CORTAS[ci % len(CORTAS)], fr, fx=["punch"], mov=2.0, sac=0.035); ci += 1
-    elif kind == "cierre":
-        add("abre", fr, mov=1.0, sac=0.01)
-    usado += nb * bl
-
-plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1), "drop": round(float(t_drop - t0), 3) if t_drop else None,
+formula = {"duracion_s": DUR, "drop_t": round(t_drop - t0, 2), "drop_pct": round((t_drop - t0) / DUR, 3),
+           "cortes": len(cortes), "cortes_por_seg": round(cps, 3), "cortes_en_beat": round(frac_beat, 3),
+           "toma_min_s": round(min(np.diff(bordes)), 2), "toma_max_s": round(max(np.diff(bordes)), 2),
+           "flashes": sum("flash" in s["fx"] for s in shots), "color": COLOR,
+           "loop": shots[0]["name"] == shots[-1]["name"], "tempo": round(tempo, 1)}
+plan = {"fps": FPS, "music": mp3, "start": round(t0, 3), "tempo": round(tempo, 1), "drop": formula["drop_t"],
         "escenario": ESC, "color": COLOR, "exposure": -0.5 if ESC == "estudio" else 0.0,
-        "hdri_rot": rnd.randint(0, 359), "shots": shots,
-        "livery": (sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else
+        "hdri_rot": rnd.randint(0, 359), "shots": shots, "formula": formula,
+        "livery": (rest[3] if len(rest) > 3 and rest[3] else
                    rnd.choice(["gt3_blanco", "guards_red", "miami_blue", "gulf", "negro_oro", "verde_python", "amarillo", "rojo_blanco", "morado", "naranja"]))}
 json.dump(plan, open(out, "w"), indent=1)
-print(json.dumps(plan))
+print(json.dumps(formula))
+print(" | ".join(f"{s['name']}:{s['frames'] / FPS:.2f}s{'*' if s['fx'] else ''}" for s in shots))

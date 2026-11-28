@@ -14,16 +14,16 @@ on:
         description: "true = 1 frame por toma a resolución completa (revisión antes del render largo)"
         default: "true"
       musica:
-        description: "URL del mp3 (vacío = phonk al azar de edits/musica.json, sin Content ID)"
+        description: "URL del mp3 (vacío = la canción NCS de edits/musica.json con el mejor drop para la fórmula)"
         default: ""
       segundos:
-        description: "Duración del edit"
-        default: "14"
+        description: "Duración del edit (fórmula: 16-45 s)"
+        default: "20"
       escenario:
         description: "estudio | exterior | vacío = al azar"
         default: ""
       color:
-        description: "teal | calido | mono | vacío = al azar"
+        description: "neutro | calido | mono | vacío = neutro/cálido al azar (teal baja las vistas)"
         default: ""
       livery:
         description: "vacío = una de las versiones modificadas de ese coche (modelos.json estilos); o gt3_blanco | guards_red | miami_blue | gulf | negro_oro | verde_python | amarillo | rojo_blanco | morado | naranja | vacío = al azar"
@@ -47,7 +47,8 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install -q librosa
+      - run: pip install -q librosa scenedetect opencv-python-headless
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
       - id: e
         name: Elegir coche
         run: |
@@ -59,19 +60,39 @@ jobs:
           echo "modelo=$M" >> $GITHUB_OUTPUT; echo "preview=$P" >> $GITHUB_OUTPUT; echo "subir=$S" >> $GITHUB_OUTPUT
       - id: p
         run: |
+          SEG="${{ inputs.segundos || '20' }}"
           URL="${{ inputs.musica }}"
-          LISTA=$( [ -n "$URL" ] && echo "$URL"; python -c "import json,random;l=[x['mp3'] for x in json.load(open('edits/musica.json'))];random.shuffle(l);print('\n'.join(l))")
-          for URL in $LISTA; do   # canciones NCS virales (uso libre y monetizable); si una no baja, la siguiente
-            curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3 && [ $(stat -c%s musica.mp3) -gt 500000 ] && break
-          done
+          if [ -n "$URL" ]; then
+            curl -sfL -A "Mozilla/5.0" "$URL" -o musica.mp3
+          else   # canciones NCS (uso libre y monetizable): se queda la del drop más fuerte que deje construir antes
+            python - "$SEG" <<'PY'
+          import json, subprocess, sys, os
+          mejor = None
+          for i, m in enumerate(json.load(open("edits/musica.json"))):
+              f = f"c{i}.mp3"
+              if subprocess.run(["curl", "-sfL", "-A", "Mozilla/5.0", m["mp3"], "-o", f]).returncode or os.path.getsize(f) < 500000:
+                  print("no bajó", m["nombre"]); continue
+              r = subprocess.run([sys.executable, "edits/plan.py", "--puntaje", f, sys.argv[1]], capture_output=True, text=True)
+              if r.returncode:
+                  print("no sirve", m["nombre"], r.stdout[-200:], r.stderr[-200:]); continue
+              p = json.loads(r.stdout.strip().splitlines()[-1]); print(m["nombre"], p)
+              if mejor is None or p["puntaje"] > mejor[0]:
+                  mejor = (p["puntaje"], f, m)
+          assert mejor, "ninguna canción sirve"
+          os.replace(mejor[1], "musica.mp3"); open("musica_url.txt", "w").write(mejor[2]["mp3"])
+          json.dump(mejor[2], open("musica_info.json", "w"), ensure_ascii=False)
+          print("ELEGIDA:", mejor[2]["nombre"])
+          PY
+          fi
           test -s musica.mp3 || { echo "No bajó ninguna canción"; exit 1; }
-          echo "$URL" > musica_url.txt
+          [ -s musica_url.txt ] || echo "$URL" > musica_url.txt
           echo "Música: $URL"
           LIV="${{ inputs.livery }}"
           [ -z "$LIV" ] && LIV=$(python3 -c "import json,random;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print(random.choice(m.get('$MODELO',{}).get('estilos') or ['gt3_blanco']))")
           echo "Livery: $LIV"
-          python edits/plan.py musica.mp3 plan.json ${{ inputs.segundos || '14' }} "${{ inputs.escenario }}" "${{ inputs.color }}" "$LIV"
-          python -c "import json;p=json.load(open('plan.json'));p['modelo_uid']='$MODELO';p['musica_url']=open('musica_url.txt').read().strip();json.dump(p,open('plan.json','w'),indent=1)"
+          python edits/plan.py musica.mp3 plan.json "$SEG" "${{ inputs.escenario || 'estudio' }}" "${{ inputs.color }}" "$LIV"
+          python edits/verificar_formula.py plan.json   # mide el plan con el mismo analizador de los 1,933 edits
+          python -c "import json,os;p=json.load(open('plan.json'));p['modelo_uid']='$MODELO';p['musica_url']=open('musica_url.txt').read().strip();p['musica_info']=json.load(open('musica_info.json')) if os.path.exists('musica_info.json') else {};json.dump(p,open('plan.json','w'),indent=1)"
           python - <<'PY' >> $GITHUB_OUTPUT
           import json, os
           shots = json.load(open("plan.json"))["shots"]
@@ -87,6 +108,8 @@ jobs:
           CAR=$(bash edits/bajar_modelo.sh $MODELO m)
           test -s "$CAR" || { echo "No se pudo bajar el modelo"; exit 1; }
           echo "$CAR" > m/ruta.txt; ls -la m | head
+          LL=$(bash edits/bajar_modelo.sh 07ffafa14c0348738edff992999511f9 m/llanta || true); echo "llanta real: $LL"   # [FREE] Sport Tire Pack - by SDC (CC BY)
+          [ -n "$LL" ] && [ -s "$LL" ] && python -c "import json;p=json.load(open('plan.json'));p['llanta_archivo']='$LL';json.dump(p,open('plan.json','w'),indent=1)"
           if grep -q '"escenario": "exterior"' plan.json; then
             H=$(python -c "import random;print(random.choice(['wide_street_01','wide_street_02','driving_school','derelict_overpass','canary_wharf','docklands_02','empty_warehouse_01','autoshop_01','shanghai_bund','hansaplatz','rooftop_night']))")
             echo "Cielo: $H"
