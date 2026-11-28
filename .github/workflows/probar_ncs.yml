@@ -1,0 +1,13 @@
+name: Probar búsqueda NCS
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for q in Mortals "Back That up to the Beat" Skyfall; do
+            echo "=== $q"
+            curl -sL -A "Mozilla/5.0" "https://ncs.io/music-search?q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")" -o p.html -w "%{http_code} %{size_download}\n"
+            grep -o 'data-tid="[^"]*"\|data-track="[^"]*"\|data-artistraw="[^"]*"\|<p>[^<]\{2,80\}</p>' p.html | head -12
+            grep -o 'class="[^"]*player-play[^"]*"[^>]\{0,400\}' p.html | head -3
+          done
