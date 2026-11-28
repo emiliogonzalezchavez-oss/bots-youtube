@@ -40,7 +40,7 @@ def bajar(vid, d):
 def cortes(path):
     from scenedetect import detect, AdaptiveDetector
     sc = detect(path, AdaptiveDetector(adaptive_threshold=2.6, min_scene_len=3), show_progress=False)
-    return [s[0].get_seconds() for s in sc[1:]]
+    return [float(s[0].seconds) if hasattr(type(s[0]), "seconds") else s[0].get_seconds() for s in sc[1:]]
 
 
 def visual(path):
