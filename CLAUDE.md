@@ -26,6 +26,8 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
   5. Renders: mirarlos de cerca antes de enseñarlos. Links: solo reales y comprobados.
   6. Si falla: causa raíz, buscar el mismo error en todo el código, re-probar. Anotar aquí la lección.
   7. Al entregar: decir qué se probó y qué no.
+- Analizador (`edits/analisis/`): la búsqueda por vistas trae vlogs/videos musicales; filtrar SIEMPRE a edits de coches
+  (palabras de coche + "edit" o ≥1.2 cortes/s, ≤70 s). YouTube bloquea descargas desde GitHub → se baja en la PC (.bat).
 - Antes de usar un coche nuevo: investigar cómo se ve modificado/deportivo y llenar `estilos` en modelos.json.
 - Revisar SIEMPRE de cerca: faros/calaveras (micas = vidrio transparente, solo brillan LEDs/DRL, direccionales y reversa
   apagadas, rojo puro sin rosa), reflejos de la pintura (no plástico, no lavada), llantas tocando el piso, cámara nunca dentro del coche.
