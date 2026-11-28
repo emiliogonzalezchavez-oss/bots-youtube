@@ -1,0 +1,151 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 21.293,
+ "tempo": 129.2,
+ "drop": 8.01,
+ "escenario": "estudio",
+ "color": "calido",
+ "exposure": -0.5,
+ "hdri_rot": 8,
+ "shots": [
+  {
+   "name": "calavera",
+   "frames": 62,
+   "fx": [],
+   "mov": 0.9,
+   "sacudida": 0.004,
+   "vel": 18.0
+  },
+  {
+   "name": "perfil",
+   "frames": 48,
+   "fx": [],
+   "mov": 0.9,
+   "sacudida": 0.004,
+   "vel": 18.0
+  },
+  {
+   "name": "faro",
+   "frames": 63,
+   "fx": [],
+   "mov": 0.9,
+   "sacudida": 0.004,
+   "vel": 18.0
+  },
+  {
+   "name": "rueda",
+   "frames": 67,
+   "fx": [],
+   "mov": 0.9,
+   "sacudida": 0.004,
+   "vel": 18.0
+  },
+  {
+   "name": "manejo_frente",
+   "frames": 44,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 26.0
+  },
+  {
+   "name": "frente",
+   "frames": 41,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "manejo_lado",
+   "frames": 27,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "manejo_frente",
+   "frames": 35,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "calavera",
+   "frames": 42,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "empuje",
+   "frames": 27,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "trasera",
+   "frames": 35,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "barrido",
+   "frames": 35,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "cenital",
+   "frames": 27,
+   "fx": [],
+   "mov": 1.5,
+   "sacudida": 0.015,
+   "vel": 24.0
+  },
+  {
+   "name": "trasera",
+   "frames": 47,
+   "fx": [],
+   "mov": 1.1,
+   "sacudida": 0.008,
+   "vel": 22.0
+  }
+ ],
+ "formula": {
+  "duracion_s": 20.0,
+  "drop_t": 8.01,
+  "drop_pct": 0.401,
+  "cortes": 13,
+  "cortes_por_seg": 0.65,
+  "cortes_en_beat": 0.462,
+  "toma_min_s": 0.91,
+  "toma_max_s": 2.25,
+  "flashes": 0,
+  "color": "calido",
+  "loop": false,
+  "tempo": 129.2
+ },
+ "livery": "guards_red",
+ "modelo_uid": "d01b254483794de3819786d93e0e1ebf",
+ "musica_url": "https://ncs.io/api/download/fearlessfunk",
+ "musica_info": {
+  "nombre": "DR M\u00d8B, Chris Linton - Fearless Funk",
+  "pagina": "https://ncs.io/fearlessfunk",
+  "mp3": "https://ncs.io/api/download/fearlessfunk"
+ },
+ "llanta_archivo": "m/llanta/modelo.glb",
+ "hdri_estudio": "m/estudio.hdr"
+}
