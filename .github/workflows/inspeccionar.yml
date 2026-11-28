@@ -1,0 +1,26 @@
+name: Inspeccionar modelo
+on:
+  workflow_dispatch:
+    inputs:
+      uid: { description: "uid de Sketchfab", required: true }
+permissions: { contents: write }
+env:
+  BLENDER_URL: https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
+jobs:
+  ver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libxi6 libxkbcommon0 libsm6 libgl1 libegl1 libxrender1 libxxf86vm1 libxfixes3 > /dev/null
+      - uses: actions/cache@v4
+        with: { path: ~/blender, key: blender-4.2.3 }
+      - run: if [ ! -x ~/blender/blender ]; then mkdir -p ~/blender && curl -sfL "$BLENDER_URL" | tar -xJ -C ~/blender --strip-components=1; fi
+      - env: { SKETCHFAB_TOKEN: "${{ secrets.SKETCHFAB_TOKEN }}" }
+        run: |
+          CAR=$(bash edits/bajar_modelo.sh ${{ inputs.uid }} m); echo "$CAR"
+          ~/blender/blender -b -noaudio -P edits/inspeccionar.py -- "$CAR" vista.jpg 2>&1 | grep -E "^TOTAL|^OBJ|rror" | tee lista.txt | head -120
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          mkdir -p /tmp/i && cp vista.jpg lista.txt /tmp/i/
+          if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
+          D=inspeccion/${{ inputs.uid }}; mkdir -p "$D"; cp /tmp/i/* "$D"/
+          git add inspeccion; git commit -qm "inspeccion ${{ inputs.uid }}"; git push -q origin renders
