@@ -212,8 +212,10 @@ def cambiar_llantas():
     grupos.sort(key=lambda g: g[0][eje_g])
     elegido = grupos[PLAN.get("llanta_n", -1)][1]
     print("LLANTA grupos", len(grupos), "-> elegido con", len(elegido), "piezas")
-    for o in nuevos:
-        if o not in elegido and o.type != "EMPTY":
+    nombres = [o.name for o in nuevos]; quedan = {o.name for o in elegido}
+    for nmo in nombres:
+        o = bpy.data.objects.get(nmo)
+        if o is not None and nmo not in quedan and o.type != "EMPTY":
             bpy.data.objects.remove(o, do_unlink=True)
     for o in elegido:   # materiales con nombre de llanta (para el material realista y el polvo)
         for sl in o.material_slots:
@@ -221,8 +223,10 @@ def cambiar_llantas():
                 sl.material.name = "Tire_real_" + sl.material.name
     for o in elegido:   # transformaciones aplicadas, sin padres
         mw = o.matrix_world.copy(); o.parent = None; o.data = o.data.copy(); o.data.transform(mw); o.matrix_world = Matrix()
-    for o in [o for o in nuevos if o.name in bpy.data.objects and o.type == "EMPTY"]:
-        bpy.data.objects.remove(o, do_unlink=True)
+    for nmo in nombres:
+        o = bpy.data.objects.get(nmo)
+        if o is not None and o.type == "EMPTY":
+            bpy.data.objects.remove(o, do_unlink=True)
 
     def marco(cos):
         c = (cos.max(0) + cos.min(0)) / 2
