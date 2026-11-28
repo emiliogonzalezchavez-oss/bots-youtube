@@ -76,18 +76,16 @@ jobs:
         with: { path: t, pattern: "tira-*", merge-multiple: true }
       - name: Unir, bajar a la mitad, sharpen, grano, EXIF
         run: |
-          pip install -q pillow numpy piexif
+          pip install -q pillow numpy piexif opencv-python-headless
           python3 - <<'PY'
           import glob
-          from PIL import Image
+          import cv2, numpy as np
           fs = sorted(glob.glob("t/*_tira*.png")); print(fs)
-          ims = [Image.open(f).convert("RGB") for f in fs]
-          W = ims[0].width; H = sum(i.height for i in ims)
-          out = Image.new("RGB", (W, H)); y = 0
-          for i in ims:
-              out.paste(i, (0, y)); y += i.height
+          ims = [cv2.imread(f, cv2.IMREAD_UNCHANGED) for f in fs]
+          print([i.dtype for i in ims][:1], [i.shape for i in ims])
+          out = np.concatenate(ims, axis=0)
           name = fs[0].split("_tira")[0].split("/")[-1]
-          out.save(f"{name}_hd.png"); print(out.size)
+          cv2.imwrite(f"{name}_hd.png", out); print(out.shape, out.dtype)
           PY
           python3 edits/post_foto.py *_hd.png
           ls -la *.jpg

@@ -1288,7 +1288,7 @@ if A.still:
     r.image_settings.file_format = "JPEG"; r.image_settings.quality = 97
     r.filepath = os.path.join(A.out, f"still_{PLAN.get('id', 'x')}_{A.shot:02d}_{t}" + (f"_tira{A.tira.split('/')[0]:0>2}" if A.tira else "") + ".jpg")
     if A.tira:
-        r.image_settings.file_format = "PNG"; r.image_settings.color_depth = "8"; r.filepath = r.filepath[:-4] + ".png"
+        r.image_settings.file_format = "PNG"; r.image_settings.color_depth = "16"; r.filepath = r.filepath[:-4] + ".png"
     bpy.ops.render.render(write_still=True)
 else:
     r.image_settings.file_format = "FFMPEG"

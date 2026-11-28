@@ -19,14 +19,27 @@ def escalar_canal(c, k):
 
 
 def acabado(ruta, seed=0):
-    im = Image.open(ruta).convert("RGB")
-    # supermuestreo: si viene al doble (p.ej. 5120x2880), se baja a la mitad con Lanczos = mucha más nitidez
-    if max(im.size) > 2600:
-        im = im.resize((im.width // 2, im.height // 2), Image.LANCZOS)
-    # sharpen leve (unsharp mask: radio 0.8 px, 40 %)
-    from PIL import ImageFilter
-    im = im.filter(ImageFilter.UnsharpMask(radius=0.8, percent=40, threshold=2))
-    a = np.asarray(im).astype(np.float32)
+    # se trabaja en flotante desde un PNG de 16 bits si existe (sin escalones ni bloques en los negros)
+    a = None
+    try:
+        import cv2
+        b16 = cv2.imread(ruta, cv2.IMREAD_UNCHANGED)
+        if b16 is not None and b16.dtype == np.uint16:
+            a = cv2.cvtColor(b16, cv2.COLOR_BGR2RGB).astype(np.float32) / 257.0
+            if max(a.shape[:2]) > 2600:   # supermuestreo: al doble -> mitad con Lanczos
+                a = cv2.resize(a, (a.shape[1] // 2, a.shape[0] // 2), interpolation=cv2.INTER_LANCZOS4)
+            bl = cv2.GaussianBlur(a, (0, 0), 0.8)
+            dif = a - bl
+            a = a + 0.4 * dif * (np.abs(dif) > 2)             # unsharp mask 0.8 px, 40 %, umbral 2
+    except ImportError:
+        pass
+    if a is None:
+        im = Image.open(ruta).convert("RGB")
+        if max(im.size) > 2600:
+            im = im.resize((im.width // 2, im.height // 2), Image.LANCZOS)
+        from PIL import ImageFilter
+        im = im.filter(ImageFilter.UnsharpMask(radius=0.8, percent=40, threshold=2))
+        a = np.asarray(im).astype(np.float32)
     h, w, _ = a.shape
     # aberración cromática: rojo un poco más grande, azul un poco más chico (se nota solo en las orillas)
     r = escalar_canal(a[..., 0].astype(np.uint8), 1.0012).astype(np.float32)
@@ -44,11 +57,15 @@ def acabado(ruta, seed=0):
     # grano de sensor: más fuerte en sombras, con algo de color
     rng = np.random.default_rng(seed)
     lum = a.mean(-1, keepdims=True) / 255.0
-    amp = 2.3 * (1.2 - lum) ** 1.5      # grano más bajo y fino (1 px, poco color)
-    g = rng.normal(0, 1, (h, w, 1)) * amp + rng.normal(0, 0.22, (h, w, 3)) * amp
-    a = a + g
+    amp = 1.7 * (1.2 - lum) ** 1.2      # grano bajo, solo de luminancia (sin motitas de color en el negro)
+    g = rng.normal(0, 1, (h, w)).astype(np.float32)
+    k = np.array([0.25, 0.5, 0.25], np.float32)        # grano suave como sensor real tras demosaico, no pixel duro
+    g = np.apply_along_axis(lambda v: np.convolve(v, k, "same"), 1, g)
+    g = np.apply_along_axis(lambda v: np.convolve(v, k, "same"), 0, g) * 1.6
+    a = a + g[..., None] * amp
+    a = a + rng.uniform(-0.5, 0.5, a.shape)            # dither para cuantizar a 8 bits sin escalones
     out = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
-    kw = {"quality": 93, "subsampling": 0}
+    kw = {"quality": 97, "subsampling": 0}
     if piexif:
         ahora = datetime.datetime.now()
         f = ahora.strftime("%Y:%m:%d %H:%M:%S").encode()
