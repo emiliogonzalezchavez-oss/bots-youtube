@@ -18,6 +18,9 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
 - Resultados en la rama huérfana `renders`.
 
 ## Reglas aprendidas (no repetir errores)
+- **REGLA #1 del dueño: SIEMPRE verificar y probar antes de entregar.** Correr el código (local o un workflow de prueba con datos
+  conocidos, p. ej. `probar_analizador.yml`), revisar casos raros (Windows: codificación UTF-8, rutas, archivos abiertos;
+  tipos de numpy en JSON; valores vacíos/NaN) y solo entonces darle algo al dueño.
 - Antes de usar un coche nuevo: investigar cómo se ve modificado/deportivo y llenar `estilos` en modelos.json.
 - Revisar SIEMPRE de cerca: faros/calaveras (micas = vidrio transparente, solo brillan LEDs/DRL, direccionales y reversa
   apagadas, rojo puro sin rosa), reflejos de la pintura (no plástico, no lavada), llantas tocando el piso, cámara nunca dentro del coche.
