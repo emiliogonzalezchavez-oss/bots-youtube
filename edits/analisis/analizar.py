@@ -81,6 +81,33 @@ def visual(path):
             "negros_pct": round(float((br < 18).mean()), 3), "loop_similitud": round(loop, 3)}, hoja
 
 
+YUNET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yunet.onnx")
+
+
+def caras(path):
+    """% de cuadros (12 muestras) con una cara visible. Los edits casi no muestran gente; bromas/vlogs sí."""
+    if not os.path.exists(YUNET):
+        return {}
+    det = cv2.FaceDetectorYN.create(YUNET, "", (360, 640), 0.7, 0.3, 50)
+    cap = cv2.VideoCapture(path)
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    con = tot = 0
+    for i in np.linspace(0, max(n - 1, 0), 12).astype(int):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(i))
+        ok, f = cap.read()
+        if not ok:
+            continue
+        h, w = f.shape[:2]
+        esc = 640 / max(h, w)
+        f = cv2.resize(f, (int(w * esc), int(h * esc)))
+        det.setInputSize((f.shape[1], f.shape[0]))
+        _, d = det.detect(f)
+        tot += 1
+        con += d is not None and any(x[2] >= 0.05 * f.shape[1] for x in d)
+    cap.release()
+    return {"caras_pct": round(con / tot, 3) if tot else None}
+
+
 def audio(path, cuts, dur):
     import librosa
     wav = path + ".wav"
@@ -174,6 +201,10 @@ for n, vid in enumerate(ids):
                     "descripcion": meta.get("descripcion", "")[:300],
                     "cortes_t": [round(c, 2) for c in cuts][:300]}
             feat.update(vis)
+            try:
+                feat.update(caras(path))
+            except Exception as e:
+                feat["caras_error"] = str(e)[:150]
             try:
                 feat.update(audio(path, cuts, dur))
             except Exception as e:
