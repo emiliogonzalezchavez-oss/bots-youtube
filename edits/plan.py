@@ -22,13 +22,40 @@ tempo, beats = librosa.beat.beat_track(y=y, sr=sr, units="time")
 tempo = float(np.atleast_1d(tempo)[0])
 rms = librosa.feature.rms(y=y)[0]
 t_rms = librosa.times_like(rms, sr=sr)
-best, t0 = -1, beats[0]
+# DROP: el beat donde el bajo/energía salta más (antes vs después). El edit arranca 4 beats antes
+# para que el drop caiga justo en la primera toma larga (flash + punch).
+S = np.abs(librosa.stft(y, n_fft=2048, hop_length=512))
+graves = S[librosa.fft_frequencies(sr=sr, n_fft=2048) < 150].sum(axis=0)
+t_g = librosa.times_like(graves, sr=sr, hop_length=512)
+dur_total = len(y) / sr
+bl0 = 60 / max(tempo, 60)
+VENT = 4 * bl0
+
+
+def media(arr, t, a, b):
+    m = (t >= a) & (t < b)
+    return arr[m].mean() if m.any() else 0.0
+
+
+DROP_BEATS = 4   # rafaga(2) + abre(2) antes de la primera larga
+best, t0, t_drop = -1, beats[0], None
 for b in beats:
-    if b + DUR > len(y) / sr - 0.5:
-        break
-    e = rms[(t_rms >= b) & (t_rms < b + DUR)].mean()
-    if e > best:
-        best, t0 = e, b
+    ini = b - DROP_BEATS * bl0
+    if ini < 0 or ini + DUR > dur_total - 0.5:
+        continue
+    antes = media(graves, t_g, b - VENT, b) + 1e-6
+    despues = media(graves, t_g, b, b + VENT)
+    salto = (despues / antes) * media(rms, t_rms, b, b + VENT)   # salto fuerte Y que después pegue duro
+    if salto > best:
+        best, t0, t_drop = salto, min(beats, key=lambda x: abs(x - ini)), b
+if t_drop is None:   # canción sin drop claro: tramo con más energía
+    for b in beats:
+        if b + DUR > dur_total - 0.5:
+            break
+        e = media(rms, t_rms, b, b + DUR)
+        if e > best:
+            best, t0 = e, b
+print(f"drop en {t_drop}s, edit desde {t0:.2f}s" if t_drop else "sin drop claro", file=sys.stderr)
 bs = [b - t0 for b in beats if t0 <= b <= t0 + DUR + 0.01]
 bl = float(np.median(np.diff(bs))) if len(bs) > 2 else 60 / max(tempo, 60)
 
@@ -80,7 +107,7 @@ for kind, nb in patron:
         add("abre", fr, mov=1.0, sac=0.01)
     usado += nb * bl
 
-plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1),
+plan = {"fps": FPS, "music": mp3, "start": round(float(t0), 3), "tempo": round(tempo, 1), "drop": round(float(t_drop - t0), 3) if t_drop else None,
         "escenario": ESC, "color": COLOR, "exposure": -0.5 if ESC == "estudio" else 0.0,
         "hdri_rot": rnd.randint(0, 359), "shots": shots,
         "livery": (sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else

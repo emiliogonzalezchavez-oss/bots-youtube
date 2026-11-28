@@ -25,6 +25,8 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
   reflejos (tarjetas), orange peel + swirls en la laca, polvo en llantas y brake dust, huellas en el piso, ventanas que dejan
   ver el interior, llantas aplastadas con sombra de contacto (AO), ruedas delanteras giradas, DOF real, sin brillos quemados
   planos, acabado con grano + aberración cromática + viñeteo (post_foto.py en stills, montar.sh en video), JPG con EXIF.
+- Música: canciones FAMOSAS en edits y monetizables (NCS con crédito; nada de canciones random), y SIEMPRE con drop fuerte.
+  `plan.py` detecta el drop (salto de graves) y lo pone en la primera toma larga (flash + punch).
 - Look estudio: exposición -0.5, luces x0.6, HDRI de estudio fuerza 1.0, AgX Punchy con livery.
 - No meter contraseñas/tokens en webs; el dueño pega los secretos él mismo.
 
