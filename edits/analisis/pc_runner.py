@@ -13,12 +13,14 @@ except ImportError:
     r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "shazamio"])
     print("shazamio:", "instalado" if r.returncode == 0 else "no se pudo instalar (sigo sin reconocer canciones)")
 AQUI = os.path.dirname(os.path.abspath(__file__))
-if not os.path.exists(os.path.join(AQUI, "yunet.onnx")):   # detector de caras
+for _f in ("reconocer.py", "yunet.onnx"):   # módulo de Shazam y detector de caras
+    if _f == "yunet.onnx" and os.path.exists(os.path.join(AQUI, _f)):
+        continue
     try:
-        urllib.request.urlretrieve("https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/main/edits/analisis/yunet.onnx",
-                                   os.path.join(AQUI, "yunet.onnx"))
+        urllib.request.urlretrieve("https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/main/edits/analisis/" + _f,
+                                   os.path.join(AQUI, _f))
     except Exception as e:
-        print("no pude bajar el detector de caras:", e)
+        print("no pude bajar", _f, e)
 FEAT = os.path.join(AQUI, "feat")
 RAW = "https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/renders/analisis/"
 PROCESOS = int(os.environ.get("PROCESOS", "4"))
@@ -45,6 +47,7 @@ for f in os.listdir(FEAT):   # borrar resultados rotos (de una corrida que fall�
             d = json.load(open(os.path.join(FEAT, f), encoding="utf-8"))
             borrar = d.get("etapa") == "analisis"   # falló por bug del analizador: reintentar
             borrar |= "error" not in d and "caras_pct" not in d and os.path.exists(os.path.join(AQUI, "yunet.onnx"))   # medir de nuevo con caras
+            borrar |= "shazam_error" in d and not d.get("shazam_titulo")   # Shazam falló sin guardar el audio: medir de nuevo
         except Exception:
             borrar = True
         if borrar:
@@ -101,6 +104,44 @@ def empacar():
     return n
 
 
+import threading
+CLIPS = os.path.join(AQUI, "clips")
+
+
+def canciones_pendientes(final=False):
+    """Reintenta Shazam de uno en uno (sin saturarlo) con los clips guardados y actualiza cada resultado.
+    En segundo plano corre mientras haya procesos midiendo; con final=True hace una última pasada."""
+    try:
+        sys.path.insert(0, AQUI)
+        from reconocer import reconocer
+    except Exception as e:
+        print("Shazam no disponible:", e); return
+    while True:
+        clips = sorted(os.listdir(CLIPS)) if os.path.isdir(CLIPS) else []
+        for c in clips:
+            if not final and all(p.poll() is not None for p in procs):
+                return
+            try:
+                vid = c[:-4]; jf = os.path.join(FEAT, vid + ".json")
+                r = reconocer(os.path.join(CLIPS, c), intentos=2, espera=15)
+                if r is None:
+                    time.sleep(60)   # Shazam está frenando: esperar
+                    continue
+                if not os.path.exists(jf):   # el análisis de ese video todavía no termina: luego
+                    continue
+                d = json.load(open(jf, encoding="utf-8")); d.pop("shazam_pendiente", None); d.update(r)
+                open(jf, "w", encoding="utf-8").write(json.dumps(d, ensure_ascii=False))
+                os.remove(os.path.join(CLIPS, c))
+                time.sleep(3)
+            except Exception as e:
+                print("error con canción", c, e)
+        if final or all(p.poll() is not None for p in procs):
+            return
+        time.sleep(30)
+
+
+hilo = threading.Thread(target=canciones_pendientes, daemon=True)
+hilo.start()
 t_zip = time.time()
 try:
     while any(p.poll() is None for p in procs):
@@ -113,5 +154,9 @@ except KeyboardInterrupt:
     for p in procs:
         p.terminate()
 finally:
+    hilo.join(timeout=120)
+    if os.path.isdir(CLIPS) and os.listdir(CLIPS):
+        print(f"Reconociendo {len(os.listdir(CLIPS))} canciones pendientes con Shazam...")
+        canciones_pendientes(final=True)
     n = empacar()
     print(f"\nListo: {n} edits medidos en resultados.zip. Avísale a Claude.")

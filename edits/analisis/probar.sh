@@ -28,3 +28,7 @@ mkdir -p pc && cp "$1/analizar.py" "$1/pc_runner.py" pc/
 LIMITE=4 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba.mp4 python3 pc/pc_runner.py
 python3 -c "import zipfile;z=zipfile.ZipFile('pc/resultados.zip');n=z.namelist();print('zip:',len(n),'archivos',n[:4])"
 python3 -c "import json,glob;[print(f, json.load(open(f)).get('caras_pct')) for f in glob.glob('pc/feat/*.json')]"; ls -la pc/yunet.onnx
+# --- prueba 4: Shazam falla -> guarda clip -> el hilo de pc_runner lo reconoce después ---
+mkdir -p pc2 && cp "$1/analizar.py" "$1/pc_runner.py" "$1/reconocer.py" "$1/yunet.onnx" pc2/
+SHAZAM_FALLA=1 LIMITE=2 PROCESOS=1 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py
+python3 -c "import json,glob;[print('CANCION', f[-16:], json.load(open(f)).get('shazam_titulo'), json.load(open(f)).get('shazam_pendiente')) for f in glob.glob('pc2/feat/*.json')]"; ls pc2/clips 2>/dev/null | wc -l

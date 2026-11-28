@@ -13,8 +13,8 @@ MIN_MAX = float(sys.argv[4]) if len(sys.argv) > 4 else 300
 os.makedirs(OUT, exist_ok=True)
 t_ini = time.time()
 PAUSA = float(os.environ.get("PAUSA", "0"))   # segundos entre descargas (en la PC, para no ser bloqueado)
+import shutil
 try:
-    import shutil
     FFMPEG = shutil.which("ffmpeg") or __import__("imageio_ffmpeg").get_ffmpeg_exe()
 except Exception:
     FFMPEG = "ffmpeg"
@@ -154,21 +154,25 @@ def audio(path, cuts, dur):
 
 
 seguidos = bugs = 0
-def shazam(path, drop, dur):
-    """Reconoce la canción con Shazam (12 s alrededor del drop). Si falla, no pasa nada."""
+CLIPS = os.path.join(os.path.dirname(os.path.abspath(OUT)), "clips")
+
+
+def shazam(path, drop, dur, vid):
+    """Reconoce la canción (12 s alrededor del drop). Si Shazam falla, guarda el clip para reintentar después."""
     try:
-        import asyncio
-        from shazamio import Shazam
         ini = max(0.0, (drop if drop else dur * 0.3) - 2)
         clip = path + ".clip.wav"
-        subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-ss", str(ini), "-t", "12", "-i", path, "-ac", "1", "-ar", "44100", clip], check=True)
-        sh = Shazam()
-        fn = getattr(sh, "recognize", None) or getattr(sh, "recognize_song")
-        r = asyncio.run(asyncio.wait_for(fn(clip), 30))
-        t = r.get("track") or {}
-        return {"shazam_titulo": t.get("title"), "shazam_artista": t.get("subtitle")} if t else {"shazam_titulo": None}
+        subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-ss", str(ini), "-t", "12", "-i", path, "-ac", "1", "-ar", "16000", clip], check=True)
+        if os.environ.get("SHAZAM_FALLA") != "1":
+            from reconocer import reconocer
+            r = reconocer(clip)
+            if r:
+                return r
+        os.makedirs(CLIPS, exist_ok=True)
+        shutil.copy(clip, os.path.join(CLIPS, vid + ".wav"))
+        return {"shazam_pendiente": True}
     except Exception as e:
-        return {"shazam_error": str(e)[:150]}
+        return {"shazam_error": repr(e)[:150]}
 
 
 for n, vid in enumerate(ids):
@@ -210,7 +214,7 @@ for n, vid in enumerate(ids):
             except Exception as e:
                 feat["audio_error"] = str(e)[:200]
             if os.environ.get("SHAZAM") == "1":
-                feat.update(shazam(path, feat.get("drop_t"), dur))
+                feat.update(shazam(path, feat.get("drop_t"), dur, vid))
             if hoja is not None:
                 cv2.imwrite(os.path.join(OUT, vid + ".jpg"), hoja, [cv2.IMWRITE_JPEG_QUALITY, 70])
         except Exception as e:
