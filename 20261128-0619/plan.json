@@ -1,0 +1,217 @@
+{
+ "fps": 30,
+ "music": "musica.mp3",
+ "start": 36.989,
+ "tempo": 129.2,
+ "escenario": "estudio",
+ "color": "mono",
+ "exposure": -0.5,
+ "hdri_rot": 157,
+ "shots": [
+  {
+   "name": "calavera",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "faro",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "abre",
+   "frames": 28,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.0,
+   "sacudida": 0.015,
+   "vel": 22.0
+  },
+  {
+   "name": "manejo_lado",
+   "frames": 56,
+   "fx": [
+    "flash",
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "empuje",
+   "frames": 14,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 14,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "trasera",
+   "frames": 56,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda_gira",
+   "frames": 28,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "frente",
+   "frames": 14,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 14,
+   "fx": [
+    "punch"
+   ],
+   "mov": 2.0,
+   "sacudida": 0.035,
+   "vel": 22.0
+  },
+  {
+   "name": "barrido",
+   "frames": 5,
+   "fx": [
+    "flash"
+   ],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "calavera",
+   "frames": 5,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "rueda",
+   "frames": 4,
+   "fx": [],
+   "mov": 2.2,
+   "sacudida": 0.03,
+   "vel": 22.0
+  },
+  {
+   "name": "manejo_frente",
+   "frames": 28,
+   "fx": [
+    "punch"
+   ],
+   "mov": 1.6,
+   "sacudida": 0.02,
+   "vel": 22.0
+  },
+  {
+   "name": "abre",
+   "frames": 28,
+   "fx": [],
+   "mov": 1.0,
+   "sacudida": 0.01,
+   "vel": 22.0
+  }
+ ],
+ "livery": "verde_python",
+ "modelo_uid": "2b509d1bce104224b147c81757f6f43a",
+ "musica_url": "https://ncs.io/api/download/vemlenta",
+ "hdri_estudio": "m/estudio.hdr"
+}
