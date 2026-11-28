@@ -1,0 +1,5 @@
+      1 "error": "ERROR: [youtube] n-NDYpgxHvY: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-
+      1 "error": "ERROR: [youtube] _pyLqZ9wel8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-
+      1 "error": "ERROR: [youtube] _Thxe1JT9hU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-
+      1 "error": "ERROR: [youtube] WpQYKHtYG-I: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-
+      1 "error": "ERROR: [youtube] SthBZ5wrNsk: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-
