@@ -1,0 +1,21 @@
+name: Medir ritmo de Shazam
+on: workflow_dispatch
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          pip install -q shazamio librosa soundfile
+          python3 -c "import librosa,soundfile as sf;y,sr=librosa.load(librosa.ex('nutcracker'),sr=16000,offset=10,duration=12);sf.write('c.wav',y,sr)"
+          cd edits/analisis && python3 - <<'PY'
+          import time
+          from reconocer import reconocer
+          for gap in (2, 5, 10, 15, 20, 30):
+              res = []
+              for i in range(4):
+                  t = time.time(); r = reconocer("../../c.wav", intentos=1)
+                  res.append("ok" if r and r.get("shazam_titulo") else ("sin" if r else "FALLA") + f"({time.time()-t:.0f}s)")
+                  time.sleep(gap)
+              print(f"espera {gap:2}s:", res, flush=True)
+          PY
