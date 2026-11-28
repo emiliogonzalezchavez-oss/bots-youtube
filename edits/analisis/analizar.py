@@ -163,7 +163,7 @@ def shazam(path, drop, dur, vid):
         ini = max(0.0, (drop if drop else dur * 0.3) - 2)
         clip = path + ".clip.wav"
         subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-ss", str(ini), "-t", "12", "-i", path, "-ac", "1", "-ar", "16000", clip], check=True)
-        if os.environ.get("SHAZAM_FALLA") != "1":
+        if os.environ.get("SHAZAM_DIRECTO") == "1" and os.environ.get("SHAZAM_FALLA") != "1":   # normal: lo reconoce el hilo de pc_runner
             from reconocer import reconocer
             r = reconocer(clip)
             if r:

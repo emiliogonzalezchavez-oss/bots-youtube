@@ -21,7 +21,7 @@ python3 -c "import json;d=json.load(open('out/x.json'));[print(k,'=',v) for k,v 
 python3 -c "import librosa,soundfile as sf;y,sr=librosa.load(librosa.ex('nutcracker'),duration=40);sf.write('musica.wav',y,sr)"
 ffmpeg -loglevel error -y -i v.mp4 -stream_loop 4 -i v.mp4 -i musica.wav -map 1:v -map 2:a -t 30 -c:v libx264 -c:a aac prueba2.mp4 2>/dev/null || ffmpeg -loglevel error -y -stream_loop 4 -i v.mp4 -i musica.wav -map 0:v -map 1:a -t 30 -c:v libx264 -c:a aac prueba2.mp4
 echo '{"y": {"id": "y", "vistas": 1}}' > vids2.json; echo y > ids2.txt
-SHAZAM=1 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 "$1/analizar.py" vids2.json ids2.txt out2
+SHAZAM=1 SHAZAM_DIRECTO=1 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 "$1/analizar.py" vids2.json ids2.txt out2
 python3 -c "import json;d=json.load(open('out2/y.json'));print({k:d.get(k) for k in ('shazam_titulo','shazam_artista','shazam_error','error','drop_t','tempo')})"
 # --- prueba 3: pc_runner completo (lista real de GitHub, filtro, 2 procesos, zip) con video local ---
 mkdir -p pc && cp "$1/analizar.py" "$1/pc_runner.py" pc/
@@ -30,5 +30,5 @@ python3 -c "import zipfile;z=zipfile.ZipFile('pc/resultados.zip');n=z.namelist()
 python3 -c "import json,glob;[print(f, json.load(open(f)).get('caras_pct')) for f in glob.glob('pc/feat/*.json')]"; ls -la pc/yunet.onnx
 # --- prueba 4: Shazam falla -> guarda clip -> el hilo de pc_runner lo reconoce después ---
 mkdir -p pc2 && cp "$1/analizar.py" "$1/pc_runner.py" "$1/reconocer.py" "$1/yunet.onnx" pc2/
-SHAZAM_FALLA=1 LIMITE=2 PROCESOS=1 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py
+LIMITE=3 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py
 python3 -c "import json,glob;[print('CANCION', f[-16:], json.load(open(f)).get('shazam_titulo'), json.load(open(f)).get('shazam_pendiente')) for f in glob.glob('pc2/feat/*.json')]"; ls pc2/clips 2>/dev/null | wc -l

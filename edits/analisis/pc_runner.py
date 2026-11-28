@@ -116,6 +116,7 @@ def canciones_pendientes(final=False):
         from reconocer import reconocer
     except Exception as e:
         print("Shazam no disponible:", e); return
+    fallos = 0
     while True:
         clips = sorted(os.listdir(CLIPS)) if os.path.isdir(CLIPS) else []
         for c in clips:
@@ -123,10 +124,12 @@ def canciones_pendientes(final=False):
                 return
             try:
                 vid = c[:-4]; jf = os.path.join(FEAT, vid + ".json")
-                r = reconocer(os.path.join(CLIPS, c), intentos=2, espera=15)
-                if r is None:
-                    time.sleep(60)   # Shazam está frenando: esperar
+                r = reconocer(os.path.join(CLIPS, c), intentos=1)
+                if r is None:   # Shazam está frenando: esperar cada vez más (1, 2, 4, 8, 15 min)
+                    fallos += 1
+                    time.sleep(min(60 * 2 ** (fallos - 1), 900))
                     continue
+                fallos = 0
                 if not os.path.exists(jf):   # el análisis de ese video todavía no termina: luego
                     continue
                 d = json.load(open(jf, encoding="utf-8")); d.pop("shazam_pendiente", None); d.update(r)
