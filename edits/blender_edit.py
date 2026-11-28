@@ -584,9 +584,9 @@ def pintura_real(m, p):
     L_(tc.outputs["Object"], vor.inputs["Vector"])
     sw = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=0.004, i_To_Min=1.0, i_To_Max=0.0)
     L_(vor.outputs["Distance"], sw.inputs["Value"])
-    alt = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); alt.inputs[1].default_value = 0.35   # peel + swirls como relieve
+    alt = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); alt.inputs[1].default_value = 0.12   # peel + swirls (sutiles: de cerca se veían como red de rayas)
     L_(sw.outputs["Result"], alt.inputs[0]); L_(peel.outputs["Fac"], alt.inputs[2])
-    bump = _n(nt, "ShaderNodeBump", i_Strength=0.06, i_Distance=0.0004)
+    bump = _n(nt, "ShaderNodeBump", i_Strength=0.04, i_Distance=0.0004)
     L_(alt.outputs[0], bump.inputs["Height"])
     L_(bump.outputs["Normal"], p.inputs["Coat Normal"])
     # polvo en estribos/defensas (abajo de 35 cm): ahí la laca se ve un poco más opaca
@@ -1227,7 +1227,7 @@ elif t == "empuje":       # empuje rápido hacia el frente (golpe)
 elif t == "abre":         # plano general que se abre (inicio/cierre en loop)
     toma((F + 2.0, -Y - 1.6, 0.5), (F + 5.5, -Y - 5.0, 1.6), (0.3, 0, 0.6), (0, 0, 0.6), (35, 32), 5.6)
 elif t == "manejo_lado":  # lado bajo, "manejando": ruedas giran y los reflejos corren
-    toma((0.2, -Y - 3.4, 0.45), (-0.4, -Y - 3.1, 0.5), (0, 0, 0.5), (-0.1, 0, 0.5), (40, 42), 3.5)
+    toma((RUEDA[0] + 1.0, -Y - 2.5, 0.42), (RUEDA[0] + 0.1, -Y - 2.3, 0.48), (RUEDA[0] - 0.4, 0, 0.45), (RUEDA[0] - 0.6, 0, 0.48), (35, 37), 3.5)
 elif t == "manejo_frente":  # frente bajo "manejando"
     toma((F + 3.2, -Y - 1.2, 0.35), (F + 2.8, -Y - 0.6, 0.4), (F - 0.8, 0, 0.5), (F - 0.8, 0, 0.5), (32, 35), 3.5)
 elif t == "rueda_gira":   # rin girando de cerca
@@ -1280,7 +1280,7 @@ for look in (("AgX - Punchy", "Punchy") if LIV else ()) + ("AgX - Medium High Co
         break
     except TypeError:
         pass
-vs.exposure = PLAN.get("exposure", -0.5 if ESC == "estudio" else 0.0)   # -0.5: la pintura no se lava a crema
+vs.exposure = SHOT.get("exposure", PLAN.get("exposure", -0.5 if ESC == "estudio" else 0.0))   # -0.5: la pintura no se lava a crema
 
 os.makedirs(A.out, exist_ok=True)
 if A.still:

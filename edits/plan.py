@@ -107,11 +107,13 @@ def armar():
             if i + k >= i_drop - 4:
                 cortes.append(i_drop); i = i_drop; break
             i += k; cortes.append(i)
-        # después del drop: más rápido pero sin ráfagas
+        # después del drop: más rápido pero sin ráfagas; la toma del drop dura más (es la que luce el coche)
+        primero = True
         while True:
-            k = rnd.choice([3, 4, 5, 6])                    # ~0.8-1.6 s
+            k = rnd.choice([5, 6, 7]) if primero else rnd.choice([3, 4, 5, 6])   # ~0.8-1.6 s
+            primero = False
             t_sig = grid[i + k] if i + k < len(grid) else 1e9
-            if t_sig >= t_fin - 0.8:
+            if t_sig >= t_fin - 1.2:                        # la toma final dura al menos 1.2 s
                 break
             i += k; cortes.append(i)
         tiempos = [grid[c] - t0 for c in cortes]
@@ -119,7 +121,7 @@ def armar():
         cps = n_cortes / DUR
         on = np.mean([en_beat[c] for c in cortes])
         largos = np.diff([0.0] + tiempos + [DUR])
-        if 0.30 <= on <= 0.50 and 0.5 <= cps <= 1.0 and largos.min() >= 0.7:
+        if 0.30 <= on <= 0.50 and 0.5 <= cps <= 1.0 and largos.min() >= 0.7 and largos[-1] >= 1.2:
             return cortes, tiempos, float(on), cps
     raise SystemExit("no encontré una combinación de cortes que cumpla la fórmula")
 
@@ -134,19 +136,26 @@ while len(pre) < n_pre_shots:
     pre.append(rnd.choice(DETALLE))
 post = POST[:]
 rnd.shuffle(post)
+EXPO = {"calavera": -0.5, "perfil": -0.4, "faro": -0.3, "rueda": -0.15, "rueda_gira": -0.15}   # el resto (coche completo): -0.15
+
+
+def expo(nm):
+    return EXPO.get(nm, -0.15) if ESC == "estudio" else 0.0
+
+
 for j in range(len(bordes) - 1):
     fr = frames[j + 1] - frames[j]
     if j < n_pre_shots:                                  # construcción: cámara tranquila
-        shots.append({"name": pre[j], "frames": fr, "fx": [], "mov": 0.9, "sacudida": 0.004, "vel": 18.0})
+        shots.append({"name": pre[j], "frames": fr, "fx": [], "mov": 0.9, "sacudida": 0.004, "vel": 18.0, "exposure": expo(pre[j])})
     elif j == n_pre_shots:                               # EL DROP: corte exacto + golpe de zoom (sin flash)
-        shots.append({"name": DROP_SHOT, "frames": fr, "fx": ["punch"], "mov": 1.6, "sacudida": 0.02, "vel": 26.0})
+        shots.append({"name": DROP_SHOT, "frames": fr, "fx": ["punch"], "mov": 1.6, "sacudida": 0.02, "vel": 26.0, "exposure": expo(DROP_SHOT)})
     elif j == len(bordes) - 2:                           # final distinto del inicio (sin loop perfecto)
-        shots.append({"name": FINAL, "frames": fr, "fx": [], "mov": 1.1, "sacudida": 0.008, "vel": 22.0})
+        shots.append({"name": FINAL, "frames": fr, "fx": [], "mov": 1.1, "sacudida": 0.008, "vel": 22.0, "exposure": expo(FINAL)})
     else:
         nm = post.pop() if post else rnd.choice(POST)
         if shots and nm == shots[-1]["name"]:
             nm = post.pop() if post else rnd.choice([x for x in POST if x != nm])
-        shots.append({"name": nm, "frames": fr, "fx": [], "mov": 1.5, "sacudida": 0.015, "vel": 24.0})
+        shots.append({"name": nm, "frames": fr, "fx": [], "mov": 1.5, "sacudida": 0.015, "vel": 24.0, "exposure": expo(nm)})
 
 formula = {"duracion_s": DUR, "drop_t": round(t_drop - t0, 2), "drop_pct": round((t_drop - t0) / DUR, 3),
            "cortes": len(cortes), "cortes_por_seg": round(cps, 3), "cortes_en_beat": round(frac_beat, 3),
