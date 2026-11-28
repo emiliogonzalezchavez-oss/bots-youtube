@@ -95,13 +95,41 @@ L += ["\n## Top 10% más virales vs. mitad de abajo (medianas)\n", f"Top: {len(t
 for f in FEATS:
     L.append(f"| {f} | {num(top[f].median(), '.3g')} | {num(mal[f].median(), '.3g')} | {num(df[f].median(), '.3g')} |")
 
+# ¿libre o con copyright? (catálogo NCS + musica.json; caché en salida/libres_cache.json)
+TIPO_CANCION = {}
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from libres import es_libre
+    cf = os.path.join(OUT, "libres_cache.json")
+    cache = json.load(open(cf, encoding="utf-8")) if os.path.exists(cf) else {}
+    pares = {(a, t) for a, t in zip(TODOS["shazam_artista"], TODOS["shazam_titulo"]) if isinstance(t, str) and t}
+    for a, t in pares:
+        TIPO_CANCION[f"{a} — {t}"] = es_libre(a or "", t, cache)
+    json.dump(cache, open(cf, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+except Exception as e:
+    print("no pude revisar si las canciones son libres:", e)
+
+
+def etiqueta(c):
+    tipo, fuente = TIPO_CANCION.get(c, ("sin_verificar", None))
+    return {"libre": f"✅ LIBRE ({fuente})", "copyright": "⛔ con copyright (probable)"}.get(tipo, "❔ sin verificar")
+
+
 L.append("\n## Canciones más usadas en el top 10%\n")
 canc = Counter(c for c in top["cancion"] if isinstance(c, str) and c)
 for k, n in canc.most_common(25):
-    L.append(f"- {k}: {n}")
+    L.append(f"- {k}: {n} — {etiqueta(k)}")
 L.append("\n## Canciones más usadas en general\n")
-for k, n in Counter(c for c in TODOS["cancion"] if isinstance(c, str) and c).most_common(25):
-    L.append(f"- {k}: {n}")
+usos = Counter(c for c in TODOS["cancion"] if isinstance(c, str) and c)
+for k, n in usos.most_common(25):
+    L.append(f"- {k}: {n} — {etiqueta(k)}")
+libres_usadas = [(k, n) for k, n in usos.most_common() if TIPO_CANCION.get(k, ("",))[0] == "libre"]
+n_cop = sum(1 for k in usos if TIPO_CANCION.get(k, ("",))[0] == "copyright")
+L.append(f"\n## Canciones LIBRES para monetizar que usan los edits ({len(libres_usadas)} libres de {len(usos)} canciones distintas; {n_cop} con copyright)\n")
+for k, n in libres_usadas:
+    L.append(f"- {k}: {n} videos — {TIPO_CANCION[k][1]}")
+if not libres_usadas:
+    L.append("- (ninguna todavía)")
 
 L.append("\n## Top 40 por viralidad\n")
 L.append("| vistas | subs | viral | dur | cortes/s | en beat | drop % | loop | canción | link |")
