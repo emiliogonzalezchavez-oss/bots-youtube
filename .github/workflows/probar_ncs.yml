@@ -4,15 +4,13 @@ jobs:
   p:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
       - run: |
-          for q in Mortals "Back That up to the Beat" Skyfall; do
-            echo "=== $q"
-            curl -sL -A "Mozilla/5.0" "https://ncs.io/music-search?q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")" -o p.html -w "%{http_code} %{size_download}\n"
-            python3 - "$q" <<'PY'
-          import re, sys, html
-          s = open("p.html", encoding="utf-8", errors="ignore").read()
-          q = sys.argv[1].split()[0]
-          for m in list(re.finditer(re.escape(q), s))[:4]:
-              print("...", re.sub(r"\s+", " ", s[max(0, m.start()-300):m.start()+200]), "...\n")
+          cd edits/analisis && python3 - <<'PY'
+          from libres import es_libre
+          casos = [("Sub Urban", "Cradles"), ("Alan Walker", "Fade"), ("DEAF KEV", "Invincible"), ("Warriyo, Laura Brehm", "Mortals"),
+                   ("Egzod, Maestro Chives, Neoni", "Royalty (Slowed)"), ("Janji, Johnning", "Heroes Tonight"),
+                   ("Adele", "Skyfall"), ("FloyyMenor & Cris MJ", "Gata Only (Slowed)"), ("373 Inc.", "Back That up to the Beat")]
+          for a, t in casos:
+              print(f"{a} — {t}:", es_libre(a, t, {}), flush=True)
           PY
-          done
