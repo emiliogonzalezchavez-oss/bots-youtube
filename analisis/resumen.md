@@ -1,6 +1,6 @@
-# Fórmula de edits de coches — 104 edits analizados (de 282 videos medidos; el resto no eran edits)
+# Fórmula de edits de coches — 463 edits analizados (de 1933 videos medidos; el resto no eran edits)
 
-Tipos: {'gente': 178, 'puro': 104} (la fórmula usa solo 'puro' cuando hay ≥30)
+Tipos: {'puro': 463, 'gente': 394} (la fórmula usa solo 'puro' cuando hay ≥30)
 
 Errores de descarga: 0 ({})
 
@@ -8,113 +8,135 @@ Correlación de Spearman (−1 a 1). viral = vistas ÷ subs del canal (quita el 
 
 | medida | vistas | viral | vistas/día | likes/vista |
 |---|---|---|---|---|
-| toma_media_despues_drop | +0.12 | +0.27 | +0.21 | -0.06 |
-| cortes | -0.17 | -0.22 | -0.12 | +0.22 |
-| cortes_por_seg | -0.17 | -0.20 | -0.12 | +0.15 |
-| flashes_por_seg | -0.11 | -0.19 | -0.28 | +0.09 |
-| toma_media | +0.16 | +0.18 | +0.12 | -0.14 |
-| res | -0.19 | -0.18 | -0.19 | +0.10 |
-| cortes_en_onset | -0.16 | -0.16 | -0.25 | +0.27 |
-| toma_mediana | +0.11 | +0.16 | +0.23 | -0.18 |
-| cortes_en_beat | +0.15 | +0.14 | +0.11 | +0.01 |
-| temperatura | -0.01 | -0.09 | +0.22 | -0.09 |
-| toma_media_antes_drop | +0.00 | -0.08 | -0.19 | +0.07 |
-| cortes_3s | -0.11 | -0.08 | +0.12 | -0.11 |
-| drop_t | -0.02 | -0.08 | +0.11 | -0.02 |
-| saturacion | +0.00 | +0.07 | -0.02 | -0.01 |
-| drop_salto | -0.09 | +0.07 | +0.13 | -0.04 |
-| toma_min | +0.06 | +0.07 | +0.06 | -0.09 |
-| duracion_s | -0.03 | -0.06 | +0.05 | +0.04 |
-| toma_max | +0.10 | +0.06 | -0.01 | -0.01 |
-| variedad_ritmo | +0.03 | -0.04 | -0.21 | +0.21 |
-| brillo_std | -0.10 | -0.04 | -0.20 | +0.03 |
-| movimiento_p90 | +0.09 | +0.04 | -0.05 | -0.16 |
-| cortes_1s | +0.03 | +0.04 | +0.19 | -0.22 |
-| caras_pct | +0.31 | -0.03 | +0.20 | -0.12 |
-| loop_similitud | +0.00 | -0.03 | -0.00 | +0.14 |
-| energia_inicio | +0.04 | -0.02 | +0.07 | -0.20 |
-| drop_pct | +0.04 | -0.02 | +0.10 | -0.07 |
-| corte_en_drop | -0.02 | -0.01 | -0.06 | -0.02 |
-| brillo | +0.03 | -0.01 | +0.34 | -0.37 |
-| negros_pct | -0.18 | -0.00 | -0.40 | +0.19 |
-| movimiento | +0.12 | -0.00 | +0.08 | -0.17 |
-| tempo | -0.25 | -0.00 | -0.18 | +0.14 |
-| primer_corte_s | +0.03 | +0.00 | -0.21 | +0.22 |
+| movimiento | -0.06 | -0.13 | +0.03 | -0.04 |
+| flashes_por_seg | -0.09 | -0.12 | -0.06 | -0.02 |
+| drop_t | +0.17 | +0.10 | +0.15 | +0.07 |
+| drop_pct | +0.14 | +0.09 | +0.14 | -0.01 |
+| brillo_std | -0.09 | -0.09 | -0.09 | -0.01 |
+| movimiento_p90 | -0.04 | -0.08 | +0.02 | -0.03 |
+| drop_salto | +0.06 | +0.07 | +0.06 | -0.05 |
+| toma_media_antes_drop | +0.11 | +0.06 | -0.01 | +0.11 |
+| negros_pct | -0.09 | -0.04 | -0.13 | +0.01 |
+| brillo | +0.02 | -0.04 | +0.09 | -0.06 |
+| toma_max | +0.09 | +0.04 | +0.01 | +0.05 |
+| res | -0.05 | -0.04 | +0.01 | +0.05 |
+| cortes_por_seg | -0.05 | -0.04 | -0.02 | -0.04 |
+| toma_media | +0.06 | +0.04 | +0.02 | +0.05 |
+| duracion_s | +0.12 | +0.04 | +0.08 | +0.13 |
+| cortes_en_onset | -0.01 | +0.03 | -0.08 | +0.11 |
+| cortes_3s | -0.05 | -0.03 | +0.04 | -0.10 |
+| toma_min | -0.02 | -0.03 | -0.03 | -0.02 |
+| cortes | +0.02 | -0.03 | +0.02 | +0.05 |
+| cortes_1s | -0.02 | +0.02 | +0.06 | -0.17 |
+| loop_similitud | +0.01 | -0.02 | +0.06 | -0.01 |
+| variedad_ritmo | +0.03 | +0.02 | -0.03 | +0.03 |
+| cortes_en_beat | -0.02 | +0.02 | +0.01 | -0.04 |
+| toma_mediana | +0.03 | +0.01 | +0.04 | +0.03 |
+| energia_inicio | -0.05 | -0.01 | +0.04 | -0.09 |
+| caras_pct | +0.07 | +0.01 | +0.05 | -0.01 |
+| saturacion | -0.01 | +0.01 | -0.02 | +0.06 |
+| tempo | -0.03 | +0.01 | -0.04 | +0.01 |
+| temperatura | +0.09 | +0.01 | +0.12 | -0.05 |
+| toma_media_despues_drop | -0.01 | -0.00 | -0.01 | +0.02 |
+| primer_corte_s | +0.03 | -0.00 | -0.04 | +0.14 |
+| corte_en_drop | -0.03 | -0.00 | +0.04 | -0.07 |
 
 ## Top 10% más virales vs. mitad de abajo (medianas)
 
-Top: 11 edits · Abajo: 52 edits
+Top: 47 edits · Abajo: 232 edits
 
 | medida | top 10% | mitad baja | todos |
 |---|---|---|---|
 | caras_pct | 0 | 0 | 0 |
-| duracion_s | 13.5 | 17.8 | 16.7 |
-| cortes | 8 | 12 | 9 |
-| cortes_por_seg | 0.661 | 0.745 | 0.645 |
-| toma_media | 1.34 | 1.27 | 1.46 |
-| toma_mediana | 1.13 | 0.9 | 0.9 |
-| toma_min | 0.333 | 0.234 | 0.233 |
-| toma_max | 4.4 | 5.07 | 5.12 |
-| variedad_ritmo | 0.818 | 0.824 | 0.825 |
-| primer_corte_s | 2.03 | 2.05 | 2.2 |
+| duracion_s | 14.4 | 15.8 | 16.2 |
+| cortes | 10 | 13 | 12 |
+| cortes_por_seg | 0.723 | 0.746 | 0.721 |
+| toma_media | 1.24 | 1.22 | 1.27 |
+| toma_mediana | 0.75 | 0.733 | 0.734 |
+| toma_min | 0.167 | 0.2 | 0.2 |
+| toma_max | 3.75 | 4.13 | 4.27 |
+| variedad_ritmo | 0.737 | 0.835 | 0.849 |
+| primer_corte_s | 2.03 | 1.93 | 1.93 |
 | cortes_1s | 0 | 0 | 0 |
 | cortes_3s | 1 | 1 | 1 |
-| brillo | 72.5 | 77.2 | 78.7 |
-| brillo_std | 22 | 26.1 | 25 |
-| saturacion | 59.2 | 60.1 | 61 |
-| temperatura | 2.7 | 1.35 | 1.45 |
-| movimiento | 6.04 | 5.05 | 5.13 |
-| movimiento_p90 | 13.3 | 10 | 10.9 |
+| brillo | 71.5 | 82.6 | 81.2 |
+| brillo_std | 24.5 | 31 | 29.5 |
+| saturacion | 68.2 | 62.8 | 63 |
+| temperatura | -0.2 | 1.15 | 1.6 |
+| movimiento | 5.3 | 7.04 | 6.09 |
+| movimiento_p90 | 13.1 | 15 | 13.4 |
 | flashes_por_seg | 0 | 0 | 0 |
-| negros_pct | 0.001 | 0.004 | 0.0085 |
-| loop_similitud | 0.036 | 0 | 0 |
-| tempo | 112 | 108 | 108 |
-| drop_t | 6.62 | 8.13 | 7.56 |
-| drop_pct | 0.321 | 0.488 | 0.502 |
-| drop_salto | 8.99 | 4.35 | 4.47 |
-| cortes_en_beat | 0.4 | 0.253 | 0.305 |
-| cortes_en_onset | 0.286 | 0.333 | 0.309 |
-| energia_inicio | 0.55 | 0.72 | 0.7 |
+| negros_pct | 0.026 | 0.0205 | 0.019 |
+| loop_similitud | 0.146 | 0.015 | 0 |
+| tempo | 112 | 112 | 112 |
+| drop_t | 6.62 | 6.34 | 6.95 |
+| drop_pct | 0.402 | 0.428 | 0.464 |
+| drop_salto | 7.02 | 4.42 | 4.61 |
+| cortes_en_beat | 0.351 | 0.297 | 0.294 |
+| cortes_en_onset | 0.333 | 0.31 | 0.333 |
+| energia_inicio | 0.71 | 0.74 | 0.73 |
 | corte_en_drop | 0 | 0 | 0 |
-| toma_media_antes_drop | 1.3 | 1.3 | 1.35 |
-| toma_media_despues_drop | 1.19 | 0.851 | 0.897 |
+| toma_media_antes_drop | 1.07 | 0.857 | 1.01 |
+| toma_media_despues_drop | 0.934 | 0.867 | 0.86 |
 | res | 640 | 640 | 640 |
 
 ## Canciones más usadas en el top 10%
 
-- Bibi Babydoll, Dj Brunin XM & LEXFEED — Automotivo Bibi Fogosa (Lexfeed Remix): 1 — ⛔ con copyright (probable)
+- Mateus Quintero — Spicy Grind (Remix): 1 — ⛔ con copyright (probable)
 - FloyyMenor & Cris MJ — Gata Only (Slowed): 1 — ⛔ con copyright (probable)
+- Татьяна Куртукова — МАТУШКА (ULTRAFUNK Remix): 1 — ⛔ con copyright (probable)
+- h6itam — FUNK SIGILO (ULTRA SLOWED): 1 — ⛔ con copyright (probable)
+- SYHEX — Rapture - Extended Mix: 1 — ⛔ con copyright (probable)
+- Bibi Babydoll, Dj Brunin XM & LEXFEED — Automotivo Bibi Fogosa (Lexfeed Remix): 1 — ⛔ con copyright (probable)
+- DJ Casper — Cha Cha Slide (Original Live Platinum Band Mix): 1 — ⛔ con copyright (probable)
+- Dj Grums — Push Up: 1 — ⛔ con copyright (probable)
+- DUDUX — Camera Lenta: 1 — ⛔ con copyright (probable)
+- tienanh109, HDN & hailong140 — X-COOL! (Instrumental - Ultra Slowed): 1 — ⛔ con copyright (probable)
+- Mc Bocão — BEAT DO HEY HEY: 1 — ⛔ con copyright (probable)
+- RELYCT, ARKEA & DUWIX0 — M-Works: 1 — ⛔ con copyright (probable)
+- Im Karan — Tous Les Memes (Slowed+Reverb): 1 — ⛔ con copyright (probable)
+- sma$her — Meme Funk (Super Slowed): 1 — ⛔ con copyright (probable)
+- LonelyBytos — DEMONS IN MY SOUL slo: 1 — ⛔ con copyright (probable)
+- DJ Pibo Remix — Didi Dance: 1 — ⛔ con copyright (probable)
+- Nikola Ryback — Bass Da Da Da (Slowed): 1 — ⛔ con copyright (probable)
+- DJZRX & Sayfalse — Not My Problem Funk (Sayfalse Remix) - SLOWED: 1 — ⛔ con copyright (probable)
+- DJ RAMON SP — Montagem - Conga Conga (Slowed + Reverb): 1 — ⛔ con copyright (probable)
+- Dark horse — Tomorrow is a Monday: 1 — ⛔ con copyright (probable)
 - Sentiment Point — Passo Bem Solto: 1 — ⛔ con copyright (probable)
+- DJONE02 — Sequência Da Dz7: 1 — ⛔ con copyright (probable)
+- Mohes Beats — Swing Lynn (feat. Twin Cabins) [Slowed]: 1 — ⛔ con copyright (probable)
+- Чcстьгерq — керосин: 1 — ⛔ con copyright (probable)
+- cqueen — Hislerim (feat. 9infidell & Enws) [Slowed Remix]: 1 — ⛔ con copyright (probable)
 
 ## Canciones más usadas en general
 
-- DJ.ILHAM — All for You: 3 — ⛔ con copyright (probable)
+- feelose & ravenv — COOOK PARDON (Slowed + Reverb): 10 — ⛔ con copyright (probable)
+- DJ Pibo Remix — Didi Dance: 9 — ⛔ con copyright (probable)
+- DJ.ILHAM — All for You: 4 — ⛔ con copyright (probable)
+- Klajdi — Ncsa (Slowed Version): 4 — ⛔ con copyright (probable)
+- FloyyMenor & Cris MJ — Gata Only (Slowed): 4 — ⛔ con copyright (probable)
+- XHellBeats — CRAZY FROG FUNK (Slowed): 3 — ⛔ con copyright (probable)
+- Grits — Ooh Ahh (My Life Be Like) [feat. Tobymac]: 3 — ⛔ con copyright (probable)
+- SCARIONIX — Sem Tempo (Ultra Slowed): 3 — ⛔ con copyright (probable)
+- SEKIMANE, Scythermane, NXGHT! & DJ DYLANFK — OLHA MENSAGEM (feat. KGJ) [Edit Version]: 2 — ⛔ con copyright (probable)
+- NOXLFLY & wascoXD — Gypsy Woman La Da Dee La Da ( slower + remix ): 2 — ⛔ con copyright (probable)
+- ICEDMANE & DYSMANE — FUNK MADA (ULTRA SLOWED) [ULTRA SLOWED]: 2 — ⛔ con copyright (probable)
+- DJ JEEAN 011 & MC BM OFICIAL — Montagem Injuriosum Retines (Super Slowed): 2 — ⛔ con copyright (probable)
+- DJ MENOR DA ZN & MC MTOODIO — Beat das Trevas [Slowed + Reverb]: 2 — ⛔ con copyright (probable)
+- ZAYLO — MONTAGEM URANIUM (Slowed): 2 — ⛔ con copyright (probable)
+- O Cristão Alemão — Speed Chase (Acoustic): 2 — ⛔ con copyright (probable)
+- Татьяна Куртукова — МАТУШКА (ULTRAFUNK Remix): 2 — ⛔ con copyright (probable)
+- M4GN — EL CONTROL (Ultra Slowed): 2 — ⛔ con copyright (probable)
+- Ariis — GÓZALO (Ultra Slowed): 2 — ⛔ con copyright (probable)
+- Nikita Gurtovenko — Limp Oni: 2 — ⛔ con copyright (probable)
+- Oto7 — Nunca Muda?: 2 — ⛔ con copyright (probable)
 - 373 Inc. — Back That up to the Beat (feat. Yusuf Salvatore): 2 — ⛔ con copyright (probable)
-- SCARIONIX — Sem Tempo (Ultra Slowed): 2 — ⛔ con copyright (probable)
-- FloyyMenor & Cris MJ — Gata Only (Slowed): 2 — ⛔ con copyright (probable)
-- Sayfalse & Nulteex — AL NACER! (Slowed): 1 — ⛔ con copyright (probable)
-- Wilson aliyan — hapi_dowdlod: 1 — ⛔ con copyright (probable)
-- Nakama & Nxxkz — LOUCURA LETAL (Slowed): 1 — ⛔ con copyright (probable)
-- DJ RICK 013, DJ NK3 & MC LyC4N — AUTOMOTIVO TOMA CAVUCADA (Super Slowed): 1 — ⛔ con copyright (probable)
-- Inga Karli — Smoking (Radio Edit): 1 — ⛔ con copyright (probable)
-- Bibi Babydoll, Dj Brunin XM & LEXFEED — Automotivo Bibi Fogosa (Lexfeed Remix): 1 — ⛔ con copyright (probable)
-- Anirudh Ravichander, Hector Salamanca & Heisenberg — 23 Theme (From "Aa23"): 1 — ⛔ con copyright (probable)
-- DJ Shadow — Six Days (feat. Mos Def) [Remix]: 1 — ⛔ con copyright (probable)
-- fennecxx & DJ ALEX — SPOOKY (Slowed): 1 — ⛔ con copyright (probable)
-- DJ Samir, MXXNAVRA & SIXTINAGER — SEM DEMORA: 1 — ⛔ con copyright (probable)
-- Ace Hood — Bugatti (feat. Future & Rick Ross): 1 — ⛔ con copyright (probable)
-- XHellBeats — CRAZY FROG FUNK (Slowed): 1 — ⛔ con copyright (probable)
-- S4nri0 — MAZKO: 1 — ⛔ con copyright (probable)
-- Yeat — If We Being Rëal: 1 — ⛔ con copyright (probable)
-- Hvnblvd — BAILA: 1 — ⛔ con copyright (probable)
-- DJ JEEAN 011 & MC BM OFICIAL — Montagem Injuriosum Retines (Super Slowed): 1 — ⛔ con copyright (probable)
-- Flame Runner — Amor Na Praia (Slowed to Perfection): 1 — ⛔ con copyright (probable)
-- DJZRX, motty, Rodricci & MC Novin — VEKI VEKI (feat. Launch13) [Super Slowed]: 1 — ⛔ con copyright (probable)
-- Sasiri Sayuranga — Chess Beat (TikTok Rat Dance) [Remix]: 1 — ⛔ con copyright (probable)
-- Scythermane, NXGHT! & MC Fabinho da Osk — NUNCA MUDA? (Slowed): 1 — ⛔ con copyright (probable)
-- Ogryzek — AURA: 1 — ⛔ con copyright (probable)
+- DUDUX — Camera Lenta: 2 — ⛔ con copyright (probable)
+- Dj Ghosty — Francesita: 2 — ⛔ con copyright (probable)
+- Twisted & Fast & Furious: The Fast Saga — WORTH NOTHING (feat. Oliver Tree): 1 — ⛔ con copyright (probable)
+- qaraqshy — MONTAGEM SANTA FE 2: 1 — ⛔ con copyright (probable)
 
-## Canciones LIBRES para monetizar que usan los edits (0 libres de 35 canciones distintas; 35 con copyright)
+## Canciones LIBRES para monetizar que usan los edits (0 libres de 189 canciones distintas; 189 con copyright)
 
 - (ninguna todavía)
 
@@ -122,43 +144,43 @@ Top: 11 edits · Abajo: 52 edits
 
 | vistas | subs | viral | dur | cortes/s | en beat | drop % | loop | canción | link |
 |---|---|---|---|---|---|---|---|---|---|
-| 61,054,398 | 60900 | 1002.5 | 13 | 0.45 | 0.00 | 0.50 | 0.00 |  | https://youtu.be/_QcD5l9MZAM |
-| 11,309,213 | 14400 | 785.4 | 10 | 0.69 | 0.29 | 0.26 | -0.03 |  | https://youtu.be/gk90c1uT3Aw |
-| 5,520,352 | 7760 | 711.4 | 12 | 0.75 | 0.33 | 0.32 | 0.00 |  | https://youtu.be/xyxBs_QDHV4 |
-| 31,817,662 | 58700 | 542.0 | 12 | 0.66 | 0.00 | 0.21 | 0.15 |  | https://youtu.be/vgJAbRZPe0A |
-| 5,110,231 | 9530 | 536.2 | 22 | 0.18 | 0.50 | 0.30 | 0.04 |  | https://youtu.be/5tMNFvAuyDM |
-| 13,258,318 | 29400 | 451.0 | 12 | 0.52 | 0.50 | 0.26 | 0.41 |  | https://youtu.be/yxEstBx_19Y |
-| 18,503,195 | 47100 | 392.8 | 49 | 0.18 | 0.11 | 0.93 | -0.13 | Sentiment Point — Passo Bem So | https://youtu.be/8UO1Giel0Z4 |
-| 43,317,611 | 121000 | 358.0 | 36 | 0.74 | 0.63 | 0.22 | 0.55 |  | https://youtu.be/eaWOJucCBWs |
-| 16,701,236 | 46800 | 356.9 | 14 | 0.72 | 0.90 | 0.55 | 0.03 | Bibi Babydoll, Dj Brunin XM &  | https://youtu.be/RGazthG0ZZU |
-| 27,562,242 | 83800 | 328.9 | 10 | 1.01 | 0.50 | 0.70 | 0.52 | FloyyMenor & Cris MJ — Gata On | https://youtu.be/JX2oiG8N6jw |
-| 9,539,122 | 29700 | 321.2 | 15 | 0.33 | 0.40 | 0.35 | 0.39 |  | https://youtu.be/tYwf-vK2rl0 |
-| 4,794,204 | 15300 | 313.3 | 46 | 0.67 | 0.35 | 0.76 | 0.00 |  | https://youtu.be/YbtQTcEF5Z0 |
-| 3,630,141 | 11800 | 307.6 | 12 | 1.74 | 0.19 | 0.51 | 0.47 |  | https://youtu.be/DuV4SOdgBCU |
-| 2,853,415 | 9430 | 302.6 | 10 | 0.50 | 0.40 | 0.15 | 0.00 |  | https://youtu.be/ABFDhzrkI-A |
-| 27,256,372 | 92500 | 294.7 | 18 | 0.33 | 0.50 | 0.67 | 0.15 |  | https://youtu.be/62tBYIm0zAo |
-| 5,658,861 | 20600 | 274.7 | 18 | 2.08 | 0.35 | 0.08 | 0.28 |  | https://youtu.be/cV08s7jBLB0 |
-| 4,937,124 | 18000 | 274.3 | 24 | 0.38 | 0.44 | 0.19 | 0.41 |  | https://youtu.be/RLmrULy84mw |
-| 5,221,119 | 19800 | 263.7 | 33 | 0.55 | 0.33 | 0.41 | -0.01 |  | https://youtu.be/s_hefHhIHXI |
-| 7,894,937 | 30000 | 263.2 | 31 | 7.18 | 0.21 | 0.51 | 0.00 |  | https://youtu.be/AloJpY71pNQ |
-| 25,234,803 | 98600 | 255.9 | 46 | 0.33 | 0.27 | 0.94 | -0.22 |  | https://youtu.be/cK0q6Xk5vjw |
-| 3,271,626 | 13000 | 251.7 | 11 | 0.38 | 1.00 | 0.57 | 0.00 |  | https://youtu.be/Fq_RWsaRX5k |
-| 23,157,048 | 103000 | 224.8 | 10 | 0.41 | 0.75 | 0.32 | -0.50 | Inga Karli — Smoking (Radio Ed | https://youtu.be/EncEo8BkCFA |
-| 5,461,892 | 24400 | 223.8 | 16 | 0.31 | 0.00 | 0.57 | 0.09 |  | https://youtu.be/oB3B9BM6ns0 |
-| 7,967,003 | 36100 | 220.7 | 11 | 0.56 | 0.00 | 0.12 | 0.00 |  | https://youtu.be/epqcg23PJQY |
-| 3,802,887 | 17300 | 219.8 | 15 | 0.52 | 0.25 | 0.75 | 0.18 |  | https://youtu.be/E7iXGlO7PWA |
-| 18,021,558 | 82500 | 218.4 | 18 | 0.27 | 0.60 | 0.70 | 0.40 | DJ Davion — Vai Dar Problema ( | https://youtu.be/Sop2KJ-Y3GM |
-| 22,334,882 | 104000 | 214.8 | 8 | 1.17 | 0.44 | 0.59 | -0.12 |  | https://youtu.be/ZGlddNaMS90 |
-| 3,671,929 | 18000 | 204.0 | 23 | 0.27 | 0.50 | 0.34 | 0.78 |  | https://youtu.be/CcAYvFvhpXI |
-| 6,176,143 | 31800 | 194.2 | 16 | 0.74 | 0.58 | 0.40 | 0.00 |  | https://youtu.be/rOG0r-BqRyE |
-| 10,198,528 | 52800 | 193.2 | 16 | 0.55 | 0.22 | 0.54 | 0.00 |  | https://youtu.be/D15el6p5fDs |
-| 11,494,233 | 60900 | 188.7 | 16 | 0.56 | 0.11 | 0.56 | 0.10 | DJ.ILHAM — All for You | https://youtu.be/GIGLFOx7hOE |
-| 7,549,890 | 40800 | 185.0 | 11 | 0.64 | 0.71 | 0.12 | 0.02 |  | https://youtu.be/NBtkpGbEpTs |
-| 4,857,673 | 28100 | 172.9 | 32 | 0.91 | 0.55 | 0.57 | 0.88 |  | https://youtu.be/gCya9SiOsd4 |
-| 15,451,502 | 90100 | 171.5 | 51 | 0.65 | 0.30 | 0.22 | 0.44 | Grits — Ooh Ahh (My Life Be Li | https://youtu.be/KL8zkztXqIE |
-| 6,368,281 | 39200 | 162.5 | 18 | 0.66 | 0.17 | 0.65 | 0.06 |  | https://youtu.be/FsdaU1wl_Fs |
-| 2,425,747 | 15500 | 156.5 | 13 | 0.67 | 0.11 | 0.54 | 0.00 |  | https://youtu.be/ImCuN0azH1c |
-| 4,343,963 | 29100 | 149.3 | 21 | 1.19 | 0.60 | 0.32 | 0.24 |  | https://youtu.be/cJG33D7tFNM |
-| 6,097,490 | 42700 | 142.8 | 33 | 1.65 | 0.40 | 0.93 | -0.31 |  | https://youtu.be/4bKO6yGBvIQ |
-| 3,159,062 | 22800 | 138.6 | 10 | 0.82 | 0.50 | 0.62 | 0.00 |  | https://youtu.be/VS9kmbJ-3tE |
-| 2,445,544 | 18900 | 129.4 | 24 | 0.55 | 0.23 | 0.70 | 0.00 |  | https://youtu.be/ITWlcw9Ivfo |
+| 1,693,028 | 1530 | 1106.6 | 8 | 3.65 | 0.42 | 0.15 | 0.94 | DJZRX & Sayfalse — Not My Prob | https://youtu.be/dwEh0GJLWkQ |
+| 61,089,814 | 61000 | 1001.5 | 13 | 0.45 | 0.00 | 0.50 | 0.00 | DJ Pibo Remix — Didi Dance | https://youtu.be/_QcD5l9MZAM |
+| 11,311,675 | 14400 | 785.5 | 10 | 0.69 | 0.29 | 0.26 | -0.03 |  | https://youtu.be/gk90c1uT3Aw |
+| 1,945,435 | 2670 | 728.6 | 27 | 0.66 | 0.28 | 0.92 | 0.43 | DJ Casper — Cha Cha Slide (Ori | https://youtu.be/zzyNtmqLF0U |
+| 5,533,266 | 7760 | 713.0 | 12 | 0.75 | 0.33 | 0.32 | 0.00 | RELYCT, ARKEA & DUWIX0 — M-Wor | https://youtu.be/xyxBs_QDHV4 |
+| 666,519 | 689 | 666.5 | 12 | 0.68 | 0.12 | 0.73 | 0.16 |  | https://youtu.be/Z86xQFMm9Qs |
+| 2,014,773 | 3190 | 631.6 | 22 | 0.51 | 0.27 | 0.40 | 0.46 | LonelyBytos — DEMONS IN MY SOU | https://youtu.be/8Wg1RiYT6Hw |
+| 23,050,823 | 36700 | 628.1 | 16 | 2.30 | 0.36 | 0.69 | 0.99 | Dark horse — Tomorrow is a Mon | https://youtu.be/-QpfrR6XuSs |
+| 5,354,963 | 9320 | 574.6 | 60 | 1.21 | 0.21 | 0.65 | 0.44 |  | https://youtu.be/9-NUOp-kiS4 |
+| 2,418,935 | 4280 | 565.2 | 42 | 0.57 | 0.17 | 0.76 | 0.23 | Mohes Beats — Swing Lynn (feat | https://youtu.be/CFG8DtIt7X0 |
+| 753,166 | 1360 | 553.8 | 18 | 0.96 | 0.35 | 0.50 | 0.00 |  | https://youtu.be/vIRc5-O-I60 |
+| 1,816,444 | 3340 | 543.8 | 13 | 1.66 | 0.29 | 0.80 | 0.17 |  | https://youtu.be/_E39jFdGSdY |
+| 31,818,830 | 58700 | 542.1 | 12 | 0.66 | 0.00 | 0.21 | 0.15 | DUDUX — Camera Lenta | https://youtu.be/vgJAbRZPe0A |
+| 5,116,548 | 9540 | 536.3 | 22 | 0.18 | 0.50 | 0.30 | 0.04 | h6itam — FUNK SIGILO (ULTRA SL | https://youtu.be/5tMNFvAuyDM |
+| 524,899 | 580 | 524.9 | 14 | 0.74 | 0.10 | 0.09 | 0.00 |  | https://youtu.be/vsnwEE94Sbg |
+| 703,336 | 1350 | 521.0 | 22 | 3.71 | 0.38 | 0.26 | 0.00 |  | https://youtu.be/Dry_q6Rn1aw |
+| 492,658 | 675 | 492.7 | 17 | 0.30 | 0.20 | 0.17 | 0.33 |  | https://youtu.be/rGLPC-XyvUM |
+| 13,267,973 | 29400 | 451.3 | 12 | 0.52 | 0.50 | 0.26 | 0.41 | tienanh109, HDN & hailong140 — | https://youtu.be/yxEstBx_19Y |
+| 1,989,402 | 4500 | 442.1 | 11 | 0.72 | 0.38 | 0.53 | 0.04 | Nikola Ryback — Bass Da Da Da  | https://youtu.be/9SpHWX81-UM |
+| 1,224,420 | 2820 | 434.2 | 23 | 1.28 | 0.76 | 0.33 | 0.18 |  | https://youtu.be/YFNSDdrElfc |
+| 1,628,130 | 3760 | 433.0 | 23 | 0.21 | 0.60 | 0.12 | -0.14 | DJ RAMON SP — Montagem - Conga | https://youtu.be/dANMnits6_c |
+| 2,273,188 | 5470 | 415.6 | 9 | 0.76 | 1.00 | 0.65 | 0.00 | Dj Grums — Push Up | https://youtu.be/oNqe50PKWQY |
+| 407,894 | 535 | 407.9 | 16 | 1.39 | 0.55 | 0.70 | -0.02 |  | https://youtu.be/WQbwbIKi_8o |
+| 405,479 | 420 | 405.5 | 8 | 0.51 | 0.00 | 0.40 | 0.00 |  | https://youtu.be/TC6op3wkMnQ |
+| 734,194 | 1860 | 394.7 | 47 | 0.23 | 0.55 | 0.37 | 0.00 |  | https://youtu.be/MktCSJmpTI4 |
+| 741,172 | 1880 | 394.2 | 28 | 0.85 | 0.75 | 0.27 | 0.00 |  | https://youtu.be/4mHi-N4D3VU |
+| 18,503,229 | 47100 | 392.9 | 49 | 0.18 | 0.11 | 0.93 | -0.13 | Sentiment Point — Passo Bem So | https://youtu.be/8UO1Giel0Z4 |
+| 1,598,946 | 4330 | 369.3 | 26 | 2.08 | 0.21 | 0.49 | 0.00 | DJONE02 — Sequência Da Dz7 | https://youtu.be/tUjIwYeVlQc |
+| 364,253 | 908 | 364.3 | 14 | 0.83 | 0.00 | 0.17 | 0.00 |  | https://youtu.be/phbLgcaskzY |
+| 363,980 | 780 | 364.0 | 8 | 4.59 | 0.31 | 0.18 | 0.38 |  | https://youtu.be/LI0eujwq6is |
+| 43,317,947 | 121000 | 358.0 | 36 | 0.74 | 0.63 | 0.22 | 0.55 | Mc Bocão — BEAT DO HEY HEY | https://youtu.be/eaWOJucCBWs |
+| 16,734,743 | 46900 | 356.8 | 14 | 0.72 | 0.90 | 0.55 | 0.03 | Bibi Babydoll, Dj Brunin XM &  | https://youtu.be/RGazthG0ZZU |
+| 1,121,022 | 3270 | 342.8 | 12 | 0.85 | 0.30 | 0.61 | 0.00 |  | https://youtu.be/UACgW0hSrDg |
+| 757,875 | 2230 | 339.9 | 10 | 0.72 | 0.29 | 0.24 | 0.54 |  | https://youtu.be/Sagf8R2D3K0 |
+| 8,129,852 | 24500 | 331.8 | 10 | 1.30 | 0.31 | 0.55 | 0.22 |  | https://youtu.be/HpqazuLQMOU |
+| 27,585,061 | 83800 | 329.2 | 10 | 1.01 | 0.50 | 0.70 | 0.52 | FloyyMenor & Cris MJ — Gata On | https://youtu.be/JX2oiG8N6jw |
+| 951,597 | 2920 | 325.9 | 10 | 1.95 | 0.47 | 0.35 | 0.26 |  | https://youtu.be/psKZamKD7Ow |
+| 410,258 | 1270 | 323.0 | 14 | 0.62 | 0.44 | 0.43 | 0.00 |  | https://youtu.be/v8Jpj39nwDA |
+| 9,542,501 | 29700 | 321.3 | 15 | 0.33 | 0.40 | 0.35 | 0.39 | Mateus Quintero — Spicy Grind  | https://youtu.be/tYwf-vK2rl0 |
+| 4,794,797 | 15300 | 313.4 | 46 | 0.67 | 0.35 | 0.76 | 0.00 | Im Karan — Tous Les Memes (Slo | https://youtu.be/YbtQTcEF5Z0 |
