@@ -28,12 +28,14 @@ jobs:
         run: |
           CAR=$(bash edits/bajar_modelo.sh ${{ inputs.modelo }} m); test -s "$CAR"; echo "$CAR" > m/ruta.txt
           bash edits/bajar_estudio.sh m/estudio.hdr || true
+          LL=$(bash edits/bajar_modelo.sh 07ffafa14c0348738edff992999511f9 m/llanta || true); echo "llanta: $LL"
           LIV="${{ inputs.livery }}"
           [ -z "$LIV" ] && LIV=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print((m.get('${{ inputs.modelo }}',{}).get('estilos') or ['gt3_blanco'])[0])")
           python3 - <<PY
           import json, os
           p = {"id": "${{ inputs.modelo }}_$LIV", "livery": "$LIV", "fps": 30, "shots": [{"name": "${{ inputs.toma }}", "frames": 30}]}
           if os.path.exists("m/estudio.hdr"): p["hdri_estudio"] = "m/estudio.hdr"
+          if "$LL" and os.path.exists("$LL"): p["llanta_archivo"] = "$LL"
           p.update(json.loads('''${{ inputs.plan }}'''))
           json.dump(p, open("m/p.json", "w")); print(p)
           PY
@@ -60,7 +62,7 @@ jobs:
           GIRAR=$(python3 -c "import json;m={x['uid']:x for x in json.load(open('edits/modelos.json'))};print('--girar' if m.get('${{ inputs.modelo }}',{}).get('girar') else '')")
           ~/blender/blender -b -noaudio -P edits/blender_edit.py -- --car "$(cat m/ruta.txt)" --uid "${{ inputs.modelo }}" $GIRAR \
             --plan m/p.json --shot 0 --out out --still --samples ${{ inputs.samples }} --tira ${{ matrix.k }}/${{ inputs.tiras }} 2>&1 \
-            | grep -E "LISTO|rror|DIRECCION|LLANTAS|DOF|Estudio" | tail -12
+            | grep -E "LISTO|rror|DIRECCION|LLANTA|DOF|Estudio|RINES|RUEDAS|DEFAULT" | tail -20
           ls -la out
       - uses: actions/upload-artifact@v4
         with: { name: "tira-${{ matrix.k }}", path: out/ }

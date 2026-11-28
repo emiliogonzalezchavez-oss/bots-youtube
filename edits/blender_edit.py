@@ -180,6 +180,97 @@ def txt_(o):
     return (o.name + " " + " ".join(s.material.name for s in o.material_slots if s.material)).lower()
 
 
+def cambiar_llantas():
+    """reemplaza las llantas del modelo por una llanta real modelada (banda con relieve, letras en el costado),
+    ajustada a cada rueda: mismo centro, eje, radio interior (rin), radio exterior y ancho."""
+    global _ll
+    ruta = PLAN.get("llanta_archivo")
+    if not ruta or not os.path.exists(ruta):
+        return
+    import numpy as np
+    KL = ("tire", "tyre", "llanta", "neum", "reifen", "pneu", "rubber")
+    viejas = [o for o in _ll if o.material_slots and all(sl.material and any(k in sl.material.name.lower() for k in KL) for sl in o.material_slots)]
+    if not viejas:
+        print("LLANTA: el modelo no tiene llantas separadas, no se cambian"); return
+    antes = set(bpy.data.objects)
+    if ruta.lower().endswith((".glb", ".gltf")):
+        bpy.ops.import_scene.gltf(filepath=ruta)
+    else:
+        bpy.ops.import_scene.fbx(filepath=ruta)
+    nuevos = [o for o in bpy.data.objects if o not in antes]
+    mallas = [o for o in nuevos if o.type == "MESH"]
+    bpy.context.view_layer.update()
+    cen = lambda o: sum((o.matrix_world @ Vector(c) for c in o.bound_box), Vector()) / 8
+    tam = max(max(o.dimensions) for o in mallas)
+    grupos = []
+    for o in mallas:
+        c = cen(o)
+        g = next((g_ for g_ in grupos if (g_[0] - c).length < tam * 0.35), None)
+        if g: g[1].append(o)
+        else: grupos.append([c, [o]])
+    P = np.array([list(g[0]) for g in grupos]); eje_g = np.argmax(P.max(0) - P.min(0)) if len(grupos) > 1 else 0
+    grupos.sort(key=lambda g: g[0][eje_g])
+    elegido = grupos[PLAN.get("llanta_n", -1)][1]
+    print("LLANTA grupos", len(grupos), "-> elegido con", len(elegido), "piezas")
+    for o in nuevos:
+        if o not in elegido and o.type != "EMPTY":
+            bpy.data.objects.remove(o, do_unlink=True)
+    for o in elegido:   # materiales con nombre de llanta (para el material realista y el polvo)
+        for sl in o.material_slots:
+            if sl.material and not sl.material.name.startswith("Tire_real"):
+                sl.material.name = "Tire_real_" + sl.material.name
+    for o in elegido:   # transformaciones aplicadas, sin padres
+        mw = o.matrix_world.copy(); o.parent = None; o.data = o.data.copy(); o.data.transform(mw); o.matrix_world = Matrix()
+    for o in [o for o in nuevos if o.name in bpy.data.objects and o.type == "EMPTY"]:
+        bpy.data.objects.remove(o, do_unlink=True)
+
+    def marco(cos):
+        c = (cos.max(0) + cos.min(0)) / 2
+        w, v = np.linalg.eigh(np.cov((cos - c).T))
+        a = v[:, 0]; e1 = v[:, 1]; e2 = np.cross(a, e1)
+        c = cos.mean(0); d = cos - c; z = d @ a
+        c = c + a * (z.max() + z.min()) / 2; d = cos - c; z = d @ a
+        rad = d - np.outer(z, a); r = np.linalg.norm(rad, axis=1)
+        return c, a, e1, e2, z, r
+    def vcos(o):
+        n = len(o.data.vertices); arr = np.empty(n * 3); o.data.vertices.foreach_get("co", arr)
+        arr = arr.reshape(-1, 3); M = np.array(o.matrix_world)
+        return arr @ M[:3, :3].T + M[:3, 3]
+    src_cos = np.concatenate([vcos(o) for o in elegido])
+    cs, as_, e1s, e2s, zs, rs = marco(src_cos)
+    in_s, out_s, w_s = np.percentile(rs, 0.5), np.percentile(rs, 99.9), np.percentile(np.abs(zs), 99.8)
+    if PLAN.get("llanta_flip"):
+        as_ = -as_; e2s = -e2s
+    _a, _b = bbox(objs); ctr_y = (_a.y + _b.y) / 2
+    nuevas = []
+    for i, t in enumerate(viejas):
+        tc_ = vcos(t); ct, at, e1t, e2t, zt, rt = marco(tc_)
+        if (ct[1] - ctr_y) * at[1] < 0:   # el costado con letras hacia afuera del coche
+            at = -at; e2t = -e2t
+        in_t, out_t, w_t = np.percentile(rt, 0.5), np.percentile(rt, 99.8), np.percentile(np.abs(zt), 99.5)
+        e1t = e1t - at * (e1t @ at); e1t /= np.linalg.norm(e1t); e2t = np.cross(at, e1t)
+        for o in elegido:
+            no = o.copy(); no.data = o.data.copy(); link(no); no.name = f"Tire_real_{i}"
+            co = vcos(o); d = co - cs; z = d @ as_; rad = d - np.outer(z, as_); r = np.linalg.norm(rad, axis=1) + 1e-9
+            u1 = (rad @ e1s) / r; u2 = (rad @ e2s) / r
+            r2 = in_t + (r - in_s) * (out_t - in_t) / (out_s - in_s)
+            z2 = z * (w_t / w_s)
+            new = ct + np.outer(z2, at) + np.outer(r2 * u1, e1t) + np.outer(r2 * u2, e2t)
+            no.matrix_world = Matrix(); no.data.vertices.foreach_set("co", new.ravel()); no.data.update()
+            for pg in no.data.polygons:
+                pg.use_smooth = True
+            mw = no.matrix_world.copy(); no.parent = car; no.matrix_parent_inverse = car.matrix_world.inverted(); no.matrix_world = mw
+            nuevas.append(no); objs.append(no)
+        t.hide_render = True; t.hide_viewport = True
+        objs.remove(t)
+    for o in elegido:
+        bpy.data.objects.remove(o, do_unlink=True)
+    _ll = [o for o in _ll if o not in viejas] + nuevas
+    bpy.context.view_layer.update()
+    print(f"LLANTA real: {len(viejas)} llantas cambiadas (fuente in={in_s:.3f} out={out_s:.3f} w={w_s:.3f})")
+
+
+cambiar_llantas()
 if not MANEJO_SHOT:
     aplastar_llantas()
     bpy.context.view_layer.update()
