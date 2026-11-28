@@ -88,10 +88,10 @@ t_fin = t0 + DUR
 DETALLE = ["faro", "rueda", "calavera", "perfil"]
 if ESC == "estudio":
     DROP_SHOT = "manejo_frente"
-    POST = ["manejo_lado", "frente34", "rueda_gira", "trasera", "empuje", "perfil", "frente", "cenital", "barrido", "calavera", "manejo_frente", "faro"]
+    POST = ["manejo_lado", "frente34", "rueda_gira", "empuje", "perfil", "frente", "cenital", "barrido", "calavera", "faro"]
 else:
     DROP_SHOT = "frente"
-    POST = ["frente34", "rueda", "trasera", "empuje", "perfil", "cenital", "barrido", "calavera", "faro"]
+    POST = ["frente34", "rueda", "empuje", "perfil", "cenital", "barrido", "calavera", "faro"]
 FINAL = "trasera"
 
 

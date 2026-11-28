@@ -172,6 +172,7 @@ jobs:
           cp arte/plan.json out/
           if ls arte/still_*.jpg >/dev/null 2>&1; then
             ffmpeg -y -loglevel error -pattern_type glob -i 'arte/still_*.jpg' -vf "scale=360:-1,tile=6x4" -frames:v 1 out/preview.jpg
+            cp arte/still_*.jpg out/   # cada toma a resolución completa, para revisarla de cerca
           else
             (cd arte && mkdir -p tomas && mv toma_*.mp4 tomas/ && bash ../edits/montar.sh plan.json tomas ../out/edit.mp4)
           fi
