@@ -108,8 +108,29 @@ import threading
 CLIPS = os.path.join(AQUI, "clips")
 
 
+def orden_clips():
+    """Primero los edits puros (casi sin caras) con más vistas: sus canciones son las que importan."""
+    lista = []
+    for c in (os.listdir(CLIPS) if os.path.isdir(CLIPS) else []):
+        vid = c[:-4]
+        caras = 1.0
+        try:
+            caras = json.load(open(os.path.join(FEAT, vid + ".json"), encoding="utf-8")).get("caras_pct") or 0.0
+        except Exception:
+            pass
+        lista.append((caras >= 0.15, -vids.get(vid, {}).get("vistas", 0), c))
+    return [c for *_, c in sorted(lista)]
+
+
+def log_shazam(vid, estado):
+    try:
+        open(os.path.join(AQUI, "shazam_log.txt"), "a", encoding="utf-8").write(f"{time.strftime('%H:%M:%S')} {vid} {estado}\n")
+    except Exception:
+        pass
+
+
 def canciones_pendientes(final=False):
-    """Reintenta Shazam de uno en uno (sin saturarlo) con los clips guardados y actualiza cada resultado.
+    """Reconoce las canciones de uno en uno, a ritmo constante (Shazam frena si se le pide mucho).
     En segundo plano corre mientras haya procesos midiendo; con final=True hace una última pasada."""
     try:
         sys.path.insert(0, AQUI)
@@ -118,24 +139,25 @@ def canciones_pendientes(final=False):
         print("Shazam no disponible:", e); return
     fallos = 0
     while True:
-        clips = sorted(os.listdir(CLIPS)) if os.path.isdir(CLIPS) else []
-        for c in clips:
+        for c in orden_clips():
             if not final and all(p.poll() is not None for p in procs):
                 return
             try:
                 vid = c[:-4]; jf = os.path.join(FEAT, vid + ".json")
-                r = reconocer(os.path.join(CLIPS, c), intentos=1)
-                if r is None:   # Shazam está frenando: esperar cada vez más (1, 2, 4, 8, 15 min)
-                    fallos += 1
-                    time.sleep(min(60 * 2 ** (fallos - 1), 900))
-                    continue
-                fallos = 0
                 if not os.path.exists(jf):   # el análisis de ese video todavía no termina: luego
                     continue
+                r = reconocer(os.path.join(CLIPS, c), intentos=1)
+                if r is None:
+                    fallos += 1
+                    log_shazam(vid, "falla")
+                    time.sleep(300 if fallos % 5 == 0 else 45)   # Shazam frenando: esperar (5 min cada 5 fallos seguidos)
+                    continue
+                fallos = 0
+                log_shazam(vid, "ok " + str(r.get("shazam_titulo")))
                 d = json.load(open(jf, encoding="utf-8")); d.pop("shazam_pendiente", None); d.update(r)
                 open(jf, "w", encoding="utf-8").write(json.dumps(d, ensure_ascii=False))
                 os.remove(os.path.join(CLIPS, c))
-                time.sleep(3)
+                time.sleep(4)
             except Exception as e:
                 print("error con canción", c, e)
         if final or all(p.poll() is not None for p in procs):

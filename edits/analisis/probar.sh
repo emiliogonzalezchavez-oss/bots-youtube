@@ -31,4 +31,4 @@ python3 -c "import json,glob;[print(f, json.load(open(f)).get('caras_pct')) for 
 # --- prueba 4: Shazam falla -> guarda clip -> el hilo de pc_runner lo reconoce después ---
 mkdir -p pc2 && cp "$1/analizar.py" "$1/pc_runner.py" "$1/reconocer.py" "$1/yunet.onnx" pc2/
 LIMITE=3 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py
-python3 -c "import json,glob;[print('CANCION', f[-16:], json.load(open(f)).get('shazam_titulo'), json.load(open(f)).get('shazam_pendiente')) for f in glob.glob('pc2/feat/*.json')]"; ls pc2/clips 2>/dev/null | wc -l
+cat pc2/shazam_log.txt; python3 -c "import json,glob;[print('CANCION', f[-16:], json.load(open(f)).get('shazam_titulo'), json.load(open(f)).get('shazam_pendiente')) for f in glob.glob('pc2/feat/*.json')]"; ls pc2/clips 2>/dev/null | wc -l
