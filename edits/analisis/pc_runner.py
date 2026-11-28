@@ -138,7 +138,9 @@ def canciones_pendientes(final=False):
     except Exception as e:
         print("Shazam no disponible:", e); return
     fallos = 0
+    rondas_sin_avance = 0
     while True:
+        antes = len(orden_clips())
         for c in orden_clips():
             if not final and all(p.poll() is not None for p in procs):
                 return
@@ -150,17 +152,23 @@ def canciones_pendientes(final=False):
                 if r is None:
                     fallos += 1
                     log_shazam(vid, "falla")
-                    time.sleep(300 if fallos % 5 == 0 else 45)   # Shazam frenando: esperar (5 min cada 5 fallos seguidos)
+                    time.sleep(300 if fallos % 5 == 0 else 60)   # Shazam frenando: esperar (5 min cada 5 fallos seguidos)
                     continue
                 fallos = 0
                 log_shazam(vid, "ok " + str(r.get("shazam_titulo")))
                 d = json.load(open(jf, encoding="utf-8")); d.pop("shazam_pendiente", None); d.update(r)
                 open(jf, "w", encoding="utf-8").write(json.dumps(d, ensure_ascii=False))
                 os.remove(os.path.join(CLIPS, c))
-                time.sleep(4)
+                time.sleep(12)   # medido: con ≥10 s entre canciones Shazam no falla; con 2-5 s falla a la 4ª
             except Exception as e:
                 print("error con canción", c, e)
-        if final or all(p.poll() is not None for p in procs):
+        quedan = len(orden_clips())
+        if final:   # última pasada: seguir mientras avance; rendirse tras 3 rondas sin reconocer nada
+            rondas_sin_avance = rondas_sin_avance + 1 if quedan >= antes else 0
+            if quedan == 0 or rondas_sin_avance >= 3:
+                return
+            continue
+        if all(p.poll() is not None for p in procs):
             return
         time.sleep(30)
 
