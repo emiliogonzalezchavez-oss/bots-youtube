@@ -136,7 +136,7 @@ while len(pre) < n_pre_shots:
     pre.append(rnd.choice(DETALLE))
 post = POST[:]
 rnd.shuffle(post)
-EXPO = {"calavera": -0.5, "perfil": -0.4, "faro": -0.3, "rueda": -0.15, "rueda_gira": -0.15}   # el resto (coche completo): -0.15
+EXPO = {"calavera": -0.5, "perfil": -0.3, "faro": -0.3, "rueda": -0.15, "rueda_gira": -0.15}   # el resto (coche completo): -0.15
 
 
 def expo(nm):
