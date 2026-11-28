@@ -84,7 +84,7 @@ jobs:
         with: { pattern: "feat-*", path: nuevos, merge-multiple: true }
       - name: Juntar y guardar
         run: |
-          pip install -q pandas numpy
+          set -x; pip install -q pandas numpy
           mkdir -p nuevos; cp videos.json /tmp/videos.json; cp -r nuevos /tmp/nuevos
           git config user.name "github-actions"; git config user.email "actions@github.com"
           if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
