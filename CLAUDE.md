@@ -31,4 +31,7 @@ Regla del dueño: si un modelo no es lo bastante bueno para verse real, NO se us
 ## Canal
 Los edits van al canal **Nightshift Garage** (@nightshiftgaragecars, antes The Fact Bomb, channelId UC6GXUQtQ-lVfBJMBwoRAPDw).
 Se sube con `subir.py factbomb ...` del repo privado bot-youtube (secret TOKEN_FACTBOMB). Logo y banner en `marca/`.
-Crédito CC BY de cada modelo en la descripción de cada video.
+Crédito CC BY de cada modelo en la descripción de cada video. Las llantas reales vienen de "[FREE] Sport Tire Pack - by SDC"
+(Sketchfab 07ffafa14c0348738edff992999511f9, CC BY): también va en el crédito.
+- Llantas: `cambiar_llantas()` reemplaza las llantas del modelo por la del pack (ajuste radial talón→exterior + ancho);
+  `ruedas_reales()` pone pasarruedas, calipers de color, disco de acero y los 4 rines iguales.
