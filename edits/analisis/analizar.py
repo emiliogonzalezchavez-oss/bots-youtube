@@ -127,6 +127,23 @@ def audio(path, cuts, dur):
 
 
 seguidos = bugs = 0
+def shazam(path, drop, dur):
+    """Reconoce la canción con Shazam (12 s alrededor del drop). Si falla, no pasa nada."""
+    try:
+        import asyncio
+        from shazamio import Shazam
+        ini = max(0.0, (drop if drop else dur * 0.3) - 2)
+        clip = path + ".clip.wav"
+        subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-ss", str(ini), "-t", "12", "-i", path, "-ac", "1", "-ar", "44100", clip], check=True)
+        sh = Shazam()
+        fn = getattr(sh, "recognize", None) or getattr(sh, "recognize_song")
+        r = asyncio.run(asyncio.wait_for(fn(clip), 30))
+        t = r.get("track") or {}
+        return {"shazam_titulo": t.get("title"), "shazam_artista": t.get("subtitle")} if t else {"shazam_titulo": None}
+    except Exception as e:
+        return {"shazam_error": str(e)[:150]}
+
+
 for n, vid in enumerate(ids):
     if (time.time() - t_ini) / 60 > MIN_MAX:
         print("tiempo agotado"); break
@@ -154,12 +171,15 @@ for n, vid in enumerate(ids):
                     "primer_corte_s": round(cuts[0], 3) if cuts else None,
                     "cortes_1s": sum(c < 1 for c in cuts), "cortes_3s": sum(c < 3 for c in cuts),
                     "track": meta["track"], "artist": meta["artist"], "res": meta["alto"], "fps_video": meta["fps"],
+                    "descripcion": meta.get("descripcion", "")[:300],
                     "cortes_t": [round(c, 2) for c in cuts][:300]}
             feat.update(vis)
             try:
                 feat.update(audio(path, cuts, dur))
             except Exception as e:
                 feat["audio_error"] = str(e)[:200]
+            if os.environ.get("SHAZAM") == "1":
+                feat.update(shazam(path, feat.get("drop_t"), dur))
             if hoja is not None:
                 cv2.imwrite(os.path.join(OUT, vid + ".jpg"), hoja, [cv2.IMWRITE_JPEG_QUALITY, 70])
         except Exception as e:

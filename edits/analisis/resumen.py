@@ -1,7 +1,7 @@
 """Cruza las medidas de cada edit con vistas/subs y saca la fórmula.
 Uso: python resumen.py videos.json feat_dir salida_dir
 """
-import json, os, sys
+import json, os, re, sys
 from collections import Counter
 import warnings
 import numpy as np
@@ -29,13 +29,30 @@ for f in os.listdir(FD):
     v = vids.get(ft["id"])
     if v:
         r = {**v, **ft}
-        r.pop("cortes_t", None); r.pop("tags", None)
+        r.pop("cortes_t", None); r["tags"] = " ".join(r.get("tags") or [])
         rows.append(r)
 df = pd.DataFrame(rows)
 if df.empty:
     open(os.path.join(OUT, "resumen.md"), "w").write(f"# Sin datos\nErrores: {dict(errores.most_common(10))}\n")
     sys.exit()
-df = df[df["duracion_s"] <= 180]
+df = df[df["duracion_s"] <= 75]
+# solo edits de verdad: lo dice el título/tags, o tiene ritmo de edit (≥0.8 cortes/s). Fuera clips de un solo plano y videos musicales
+COCHE_KW = ("car", "cars", "jdm", "supra", "gtr", "r34", "skyline", "rx7", "silvia", "ae86", "nsx", "civic", "bmw", "e30", "m3", "m4", "m5",
+            "porsche", "911", "gt3", "ferrari", "lambo", "lamborghini", "huracan", "aventador", "mclaren", "bugatti", "koenigsegg",
+            "pagani", "mustang", "corvette", "camaro", "dodge", "challenger", "charger", "hellcat", "amg", "mercedes", "audi", "rs6",
+            "r8", "nissan", "toyota", "honda", "subaru", "wrx", "evo", "mazda", "golf", "gti", "drift", "supercar", "hypercar",
+            "stance", "rolls", "bentley", "aston", "turbo", "v8", "v10", "v12", "racing", "motorsport", "f1", "tuning", "jdm")
+palabras = [re.findall(r"[a-z0-9]+", f"{t} {g}".lower()) for t, g in zip(df["titulo"].fillna(""), df["tags"].fillna(""))]
+df["edit_titulo"] = [any(w.startswith("edit") for w in p) for p in palabras]
+df["es_coche"] = [any(w in COCHE_KW for w in p) for p in palabras]
+n_antes = len(df)
+# edit de coche = habla de coches Y (dice "edit" o tiene ritmo de edit ≥1.2 cortes/s)
+df = df[df["es_coche"] & (df["edit_titulo"] | (pd.to_numeric(df["cortes_por_seg"], errors="coerce") >= 1.2))]
+for c in ("shazam_titulo", "shazam_artista", "track", "artist"):
+    if c not in df:
+        df[c] = None
+df["cancion"] = [f"{a} — {t}" if isinstance(t, str) and t else (f"{a2} — {t2}" if isinstance(t2, str) and t2 else None)
+                 for a, t, a2, t2 in zip(df["shazam_artista"], df["shazam_titulo"], df["artist"], df["track"])]
 df["log_vistas"] = np.log10(df["vistas"] + 1)
 df["log_viral"] = np.log10(df["viral"] + 1e-3)
 df["log_vistas_dia"] = np.log10(df["vistas_dia"] + 1)
@@ -51,7 +68,7 @@ FEATS = ["duracion_s", "cortes", "cortes_por_seg", "toma_media", "toma_mediana",
 FEATS = [f for f in FEATS if f in df]
 for f in FEATS:
     df[f] = pd.to_numeric(df[f], errors="coerce")
-L = [f"# Fórmula de edits de coches — {len(df)} edits analizados\n",
+L = [f"# Fórmula de edits de coches — {len(df)} edits analizados (de {n_antes} videos medidos; el resto no eran edits)\n",
      f"Errores de descarga: {sum(errores.values())} ({dict(errores.most_common(3))})\n",
      "Correlación de Spearman (−1 a 1). viral = vistas ÷ subs del canal (quita el efecto de canales grandes).\n",
      "| medida | vistas | viral | vistas/día | likes/vista |", "|---|---|---|---|---|"]
@@ -71,18 +88,18 @@ for f in FEATS:
     L.append(f"| {f} | {num(top[f].median(), '.3g')} | {num(mal[f].median(), '.3g')} | {num(df[f].median(), '.3g')} |")
 
 L.append("\n## Canciones más usadas en el top 10%\n")
-canc = Counter(f"{a} — {t}" for a, t in zip(top["artist"].fillna("?"), top["track"].fillna("?")) if t != "?")
+canc = Counter(c for c in top["cancion"] if c)
 for k, n in canc.most_common(25):
     L.append(f"- {k}: {n}")
 L.append("\n## Canciones más usadas en general\n")
-for k, n in Counter(f"{a} — {t}" for a, t in zip(df["artist"].fillna("?"), df["track"].fillna("?")) if t != "?").most_common(25):
+for k, n in Counter(c for c in df["cancion"] if c).most_common(25):
     L.append(f"- {k}: {n}")
 
 L.append("\n## Top 40 por viralidad\n")
 L.append("| vistas | subs | viral | dur | cortes/s | en beat | drop % | loop | canción | link |")
 L.append("|---|---|---|---|---|---|---|---|---|---|")
 for _, r in df.sort_values("viral", ascending=False).head(40).iterrows():
-    track = r.get("track"); track = track if isinstance(track, str) else ""
+    track = r.get("cancion"); track = track if isinstance(track, str) else ""
     L.append(f"| {int(r['vistas']):,} | {num(r.get('subs'), '.0f')} | {num(r['viral'], '.1f')} | {num(r['duracion_s'], '.0f')} | "
              f"{num(r.get('cortes_por_seg'))} | {num(r.get('cortes_en_beat'))} | {num(r.get('drop_pct'))} | "
              f"{num(r.get('loop_similitud'))} | {track[:30]} | https://youtu.be/{r['id']} |")

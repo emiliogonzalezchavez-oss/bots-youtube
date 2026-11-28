@@ -17,3 +17,13 @@ ffmpeg -loglevel error -y -i v.mp4 -i a.wav -shortest -c:v copy -c:a aac prueba.
 echo '{"x": {"id": "x", "vistas": 1}}' > vids.json; echo x > ids.txt
 VIDEO_LOCAL=$PWD/prueba.mp4 python3 "$1/analizar.py" vids.json ids.txt out
 python3 -c "import json;d=json.load(open('out/x.json'));[print(k,'=',v) for k,v in d.items() if k!='cortes_t'];print('cortes_t', d.get('cortes_t'))"
+# --- prueba 2: Shazam con una canción real (ejemplo de librosa) ---
+python3 -c "import librosa,soundfile as sf;y,sr=librosa.load(librosa.ex('nutcracker'),duration=40);sf.write('musica.wav',y,sr)"
+ffmpeg -loglevel error -y -i v.mp4 -stream_loop 4 -i v.mp4 -i musica.wav -map 1:v -map 2:a -t 30 -c:v libx264 -c:a aac prueba2.mp4 2>/dev/null || ffmpeg -loglevel error -y -stream_loop 4 -i v.mp4 -i musica.wav -map 0:v -map 1:a -t 30 -c:v libx264 -c:a aac prueba2.mp4
+echo '{"y": {"id": "y", "vistas": 1}}' > vids2.json; echo y > ids2.txt
+SHAZAM=1 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 "$1/analizar.py" vids2.json ids2.txt out2
+python3 -c "import json;d=json.load(open('out2/y.json'));print({k:d.get(k) for k in ('shazam_titulo','shazam_artista','shazam_error','error','drop_t','tempo')})"
+# --- prueba 3: pc_runner completo (lista real de GitHub, filtro, 2 procesos, zip) con video local ---
+mkdir -p pc && cp "$1/analizar.py" "$1/pc_runner.py" pc/
+LIMITE=4 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba.mp4 python3 pc/pc_runner.py
+python3 -c "import zipfile;z=zipfile.ZipFile('pc/resultados.zip');n=z.namelist();print('zip:',len(n),'archivos',n[:4])"
