@@ -6,8 +6,8 @@ import json, os, subprocess, sys, tempfile, time, traceback
 import cv2
 import numpy as np
 
-vids = json.load(open(sys.argv[1]))
-ids = [l.strip() for l in open(sys.argv[2]) if l.strip()]
+vids = json.load(open(sys.argv[1], encoding="utf-8"))
+ids = [l.strip() for l in open(sys.argv[2], encoding="utf-8") if l.strip()]
 OUT = sys.argv[3]
 MIN_MAX = float(sys.argv[4]) if len(sys.argv) > 4 else 300
 os.makedirs(OUT, exist_ok=True)
@@ -170,7 +170,7 @@ for n, vid in enumerate(ids):
         time.sleep(30 * seguidos)
         continue   # no guardar: se reintenta en la próxima corrida
     seguidos = 0
-    json.dump(feat, open(os.path.join(OUT, vid + ".json"), "w"), ensure_ascii=False)
+    json.dump(feat, open(os.path.join(OUT, vid + ".json"), "w", encoding="utf-8"), ensure_ascii=False)
     if PAUSA:
         time.sleep(PAUSA)
     print(n, vid, "ERROR " + feat["error"][:120] if "error" in feat else f"ok {time.time() - t0:.0f}s cortes={feat['cortes']}", flush=True)

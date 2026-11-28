@@ -34,8 +34,8 @@ print(f"\n{len(vids)} edits encontrados, {len(hechos)} ya medidos, {len(pend)} p
 procs = []
 for i in range(PROCESOS):
     f = os.path.join(AQUI, f"ids_{i}.txt")
-    open(f, "w").write("\n".join(pend[i::PROCESOS]))
-    env = dict(os.environ, PAUSA="2", PYTHONIOENCODING="utf-8")
+    open(f, "w", encoding="utf-8").write("\n".join(pend[i::PROCESOS]))
+    env = dict(os.environ, PAUSA="2", PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     procs.append(subprocess.Popen([sys.executable, os.path.join(AQUI, "analizar.py"), os.path.join(AQUI, "videos.json"),
                                    f, FEAT, "100000"], env=env))
 try:
