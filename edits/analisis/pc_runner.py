@@ -13,6 +13,12 @@ except ImportError:
     r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "shazamio"])
     print("shazamio:", "instalado" if r.returncode == 0 else "no se pudo instalar (sigo sin reconocer canciones)")
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if not os.path.exists(os.path.join(AQUI, "yunet.onnx")):   # detector de caras
+    try:
+        urllib.request.urlretrieve("https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/main/edits/analisis/yunet.onnx",
+                                   os.path.join(AQUI, "yunet.onnx"))
+    except Exception as e:
+        print("no pude bajar el detector de caras:", e)
 FEAT = os.path.join(AQUI, "feat")
 RAW = "https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/renders/analisis/"
 PROCESOS = int(os.environ.get("PROCESOS", "4"))
@@ -38,6 +44,7 @@ for f in os.listdir(FEAT):   # borrar resultados rotos (de una corrida que fall√
         try:
             d = json.load(open(os.path.join(FEAT, f), encoding="utf-8"))
             borrar = d.get("etapa") == "analisis"   # fall√≥ por bug del analizador: reintentar
+            borrar |= "error" not in d and "caras_pct" not in d and os.path.exists(os.path.join(AQUI, "yunet.onnx"))   # medir de nuevo con caras
         except Exception:
             borrar = True
         if borrar:

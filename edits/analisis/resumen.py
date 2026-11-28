@@ -48,6 +48,11 @@ df["es_coche"] = [any(w in COCHE_KW for w in p) for p in palabras]
 n_antes = len(df)
 # edit de coche = habla de coches Y (dice "edit" o tiene ritmo de edit ≥1.2 cortes/s)
 df = df[df["es_coche"] & (df["edit_titulo"] | (pd.to_numeric(df["cortes_por_seg"], errors="coerce") >= 1.2))]
+# tipo: "puro" = solo coches (≥4 cortes y casi sin caras), como los de Nightshift; "gente" = memes/bromas con personas
+cp = pd.to_numeric(df["caras_pct"], errors="coerce") if "caras_pct" in df else pd.Series(np.nan, index=df.index)
+df["tipo"] = np.where((pd.to_numeric(df["cortes"], errors="coerce") >= 4) & (cp < 0.15), "puro",
+                      np.where(cp.isna(), "sin_dato", "gente"))
+conteo_tipos = df["tipo"].value_counts().to_dict()
 for c in ("shazam_titulo", "shazam_artista", "track", "artist"):
     if c not in df:
         df[c] = None
@@ -58,9 +63,11 @@ df["log_viral"] = np.log10(df["viral"] + 1e-3)
 df["log_vistas_dia"] = np.log10(df["vistas_dia"] + 1)
 df["likes_por_vista"] = df["likes"] / df["vistas"].clip(lower=1)
 df["coment_por_vista"] = df["comentarios"] / df["vistas"].clip(lower=1)
-df.to_csv(os.path.join(OUT, "datos.csv"), index=False)
+TODOS = df
+df = df[df["tipo"] == "puro"] if (df["tipo"] == "puro").sum() >= 30 else df
+TODOS.to_csv(os.path.join(OUT, "datos.csv"), index=False)
 
-FEATS = ["duracion_s", "cortes", "cortes_por_seg", "toma_media", "toma_mediana", "toma_min", "toma_max", "variedad_ritmo",
+FEATS = ["caras_pct", "duracion_s", "cortes", "cortes_por_seg", "toma_media", "toma_mediana", "toma_min", "toma_max", "variedad_ritmo",
          "primer_corte_s", "cortes_1s", "cortes_3s", "brillo", "brillo_std", "saturacion", "temperatura", "movimiento",
          "movimiento_p90", "flashes_por_seg", "negros_pct", "loop_similitud", "tempo", "drop_t", "drop_pct", "drop_salto",
          "cortes_en_beat", "cortes_en_onset", "energia_inicio", "corte_en_drop", "toma_media_antes_drop",
@@ -69,6 +76,7 @@ FEATS = [f for f in FEATS if f in df]
 for f in FEATS:
     df[f] = pd.to_numeric(df[f], errors="coerce")
 L = [f"# Fórmula de edits de coches — {len(df)} edits analizados (de {n_antes} videos medidos; el resto no eran edits)\n",
+     f"Tipos: {conteo_tipos} (la fórmula usa solo 'puro' cuando hay ≥30)\n",
      f"Errores de descarga: {sum(errores.values())} ({dict(errores.most_common(3))})\n",
      "Correlación de Spearman (−1 a 1). viral = vistas ÷ subs del canal (quita el efecto de canales grandes).\n",
      "| medida | vistas | viral | vistas/día | likes/vista |", "|---|---|---|---|---|"]
@@ -88,11 +96,11 @@ for f in FEATS:
     L.append(f"| {f} | {num(top[f].median(), '.3g')} | {num(mal[f].median(), '.3g')} | {num(df[f].median(), '.3g')} |")
 
 L.append("\n## Canciones más usadas en el top 10%\n")
-canc = Counter(c for c in top["cancion"] if c)
+canc = Counter(c for c in top["cancion"] if isinstance(c, str) and c)
 for k, n in canc.most_common(25):
     L.append(f"- {k}: {n}")
 L.append("\n## Canciones más usadas en general\n")
-for k, n in Counter(c for c in df["cancion"] if c).most_common(25):
+for k, n in Counter(c for c in TODOS["cancion"] if isinstance(c, str) and c).most_common(25):
     L.append(f"- {k}: {n}")
 
 L.append("\n## Top 40 por viralidad\n")

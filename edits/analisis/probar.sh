@@ -27,3 +27,4 @@ python3 -c "import json;d=json.load(open('out2/y.json'));print({k:d.get(k) for k
 mkdir -p pc && cp "$1/analizar.py" "$1/pc_runner.py" pc/
 LIMITE=4 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba.mp4 python3 pc/pc_runner.py
 python3 -c "import zipfile;z=zipfile.ZipFile('pc/resultados.zip');n=z.namelist();print('zip:',len(n),'archivos',n[:4])"
+python3 -c "import json,glob;[print(f, json.load(open(f)).get('caras_pct')) for f in glob.glob('pc/feat/*.json')]"; ls -la pc/yunet.onnx
