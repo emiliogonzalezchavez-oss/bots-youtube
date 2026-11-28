@@ -18,7 +18,7 @@ if not exist venv\Scripts\python.exe (
 )
 echo Instalando/actualizando herramientas (la primera vez tarda unos minutos)...
 venv\Scripts\python.exe -m pip install -q --upgrade pip
-venv\Scripts\python.exe -m pip install -q -U yt-dlp "scenedetect[opencv-headless]" librosa numpy imageio-ffmpeg
+venv\Scripts\python.exe -m pip install -q -U yt-dlp scenedetect opencv-python-headless librosa numpy imageio-ffmpeg
 curl -sL -o analizar.py https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/main/edits/analisis/analizar.py
 curl -sL -o pc_runner.py https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/main/edits/analisis/pc_runner.py
 venv\Scripts\python.exe pc_runner.py

@@ -63,7 +63,7 @@ jobs:
       - name: Instalar
         run: |
           sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
-          pip install -q yt-dlp "scenedetect[opencv-headless]" librosa numpy
+          pip install -q yt-dlp scenedetect opencv-python-headless librosa numpy
       - name: Medir
         env: { YTDLP_COOKIES: "${{ runner.temp }}/c.txt", COOK: "${{ secrets.YT_COOKIES }}" }
         run: |

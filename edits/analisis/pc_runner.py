@@ -3,6 +3,10 @@ y deja todo en resultados.zip para que Claude lo suba. Se puede cerrar y volver 
 """
 import json, os, subprocess, sys, time, urllib.request, zipfile
 
+try:
+    import cv2  # noqa
+except ImportError:   # scenedetect nuevo ya no trae opencv
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "opencv-python-headless"], check=True)
 AQUI = os.path.dirname(os.path.abspath(__file__))
 FEAT = os.path.join(AQUI, "feat")
 RAW = "https://raw.githubusercontent.com/emiliogonzalezchavez-oss/bots-youtube/renders/analisis/"
