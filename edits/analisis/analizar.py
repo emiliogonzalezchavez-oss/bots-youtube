@@ -115,8 +115,8 @@ def audio(path, cuts, dur):
         return float(np.mean([np.min(np.abs(ref - t)) <= tol for t in ts]))
     r = {"tempo": round(tempo, 1), "drop_t": round(drop, 2) if drop is not None else None, "drop_salto": round(salto, 2),
          "drop_pct": round(drop / dur, 3) if drop is not None and dur else None,
-         "cortes_en_beat": round(cerca(cuts, beats, 0.07), 3), "cortes_en_onset": round(cerca(cuts, onsets, 0.05), 3),
-         "energia_inicio": round(m(rms, t_r, 0, 1.5) / (rms.mean() + 1e-6), 2),
+         "cortes_en_beat": round(cerca(cuts, beats, 0.08), 3), "cortes_en_onset": round(cerca(cuts, onsets, 0.05), 3),
+         "energia_inicio": round(float(m(rms, t_r, 0, 1.5) / (float(rms.mean()) + 1e-6)), 2),
          "corte_en_drop": bool(drop is not None and any(abs(c - drop) < 0.12 for c in cuts))}
     if drop is not None and cuts:
         c = np.array(cuts)
