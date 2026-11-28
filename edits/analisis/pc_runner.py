@@ -28,6 +28,12 @@ if not txt:
 open(os.path.join(AQUI, "videos.json"), "w", encoding="utf-8").write(txt)
 vids = json.loads(txt)
 hechos = set((bajar("hechos.txt") or "").split())
+for f in os.listdir(FEAT):   # borrar resultados rotos (de una corrida que falló)
+    if f.endswith(".json"):
+        try:
+            json.load(open(os.path.join(FEAT, f), encoding="utf-8"))
+        except Exception:
+            os.remove(os.path.join(FEAT, f))
 hechos |= {f[:-5] for f in os.listdir(FEAT) if f.endswith(".json")}
 pend = [k for k, v in sorted(vids.items(), key=lambda kv: -kv[1].get("vistas", 0)) if k not in hechos]
 print(f"\n{len(vids)} edits encontrados, {len(hechos)} ya medidos, {len(pend)} por medir con {PROCESOS} procesos.\n")

@@ -170,7 +170,8 @@ for n, vid in enumerate(ids):
         time.sleep(30 * seguidos)
         continue   # no guardar: se reintenta en la próxima corrida
     seguidos = 0
-    json.dump(feat, open(os.path.join(OUT, vid + ".json"), "w", encoding="utf-8"), ensure_ascii=False)
+    txt = json.dumps(feat, ensure_ascii=False, default=lambda o: o.item() if hasattr(o, "item") else str(o))
+    open(os.path.join(OUT, vid + ".json"), "w", encoding="utf-8").write(txt)
     if PAUSA:
         time.sleep(PAUSA)
     print(n, vid, "ERROR " + feat["error"][:120] if "error" in feat else f"ok {time.time() - t0:.0f}s cortes={feat['cortes']}", flush=True)
