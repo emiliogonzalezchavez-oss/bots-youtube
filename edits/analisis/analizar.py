@@ -12,13 +12,19 @@ OUT = sys.argv[3]
 MIN_MAX = float(sys.argv[4]) if len(sys.argv) > 4 else 300
 os.makedirs(OUT, exist_ok=True)
 t_ini = time.time()
+PAUSA = float(os.environ.get("PAUSA", "0"))   # segundos entre descargas (en la PC, para no ser bloqueado)
+try:
+    import shutil
+    FFMPEG = shutil.which("ffmpeg") or __import__("imageio_ffmpeg").get_ffmpeg_exe()
+except Exception:
+    FFMPEG = "ffmpeg"
 
 
 def bajar(vid, d):
     import yt_dlp
     opts = {"format": "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720]/b", "merge_output_format": "mp4",
             "outtmpl": os.path.join(d, "v.%(ext)s"), "quiet": True, "no_warnings": True, "noplaylist": True,
-            "retries": 2, "socket_timeout": 30}
+            "retries": 2, "socket_timeout": 30, "ffmpeg_location": FFMPEG}
     if os.environ.get("YTDLP_COOKIES") and os.path.exists(os.environ["YTDLP_COOKIES"]):
         opts["cookiefile"] = os.environ["YTDLP_COOKIES"]
     with yt_dlp.YoutubeDL(opts) as y:
@@ -76,7 +82,7 @@ def visual(path):
 def audio(path, cuts, dur):
     import librosa
     wav = path + ".wav"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", path, "-ac", "1", "-ar", "22050", wav], check=True)
+    subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", path, "-ac", "1", "-ar", "22050", wav], check=True)
     y, sr = librosa.load(wav, sr=22050, mono=True)
     if len(y) < sr:
         return {}
@@ -118,6 +124,7 @@ def audio(path, cuts, dur):
     return r
 
 
+seguidos = 0
 for n, vid in enumerate(ids):
     if (time.time() - t_ini) / 60 > MIN_MAX:
         print("tiempo agotado"); break
@@ -127,8 +134,9 @@ for n, vid in enumerate(ids):
     with tempfile.TemporaryDirectory() as d:
         try:
             path, meta = bajar(vid, d)
-            dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
-                                                 "csv=p=0", path]).decode().strip() or 0)
+            cap = cv2.VideoCapture(path)
+            dur = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (cap.get(cv2.CAP_PROP_FPS) or 30)
+            cap.release()
             cuts = cortes(path)
             vis, hoja = visual(path)
             tomas = np.diff([0.0] + cuts + [dur]) if dur else np.array([])
@@ -155,5 +163,14 @@ for n, vid in enumerate(ids):
             feat = {"id": vid, "error": msg}
             if "Traceback" not in msg:
                 traceback.print_exc(limit=1)
+    if "error" in feat and any(x in feat["error"] for x in ("not a bot", "429", "Too Many")):
+        seguidos += 1
+        if seguidos >= 8:
+            print("YouTube está bloqueando las descargas; paro este proceso"); break
+        time.sleep(30 * seguidos)
+        continue   # no guardar: se reintenta en la próxima corrida
+    seguidos = 0
     json.dump(feat, open(os.path.join(OUT, vid + ".json"), "w"), ensure_ascii=False)
+    if PAUSA:
+        time.sleep(PAUSA)
     print(n, vid, "ERROR " + feat["error"][:120] if "error" in feat else f"ok {time.time() - t0:.0f}s cortes={feat['cortes']}", flush=True)

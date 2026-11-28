@@ -52,6 +52,7 @@ jobs:
         with: { name: lista, path: "videos.json\nids_*.txt" }
   medir:
     needs: buscar
+    if: ${{ (inputs.max_videos || '0') != '0' }}   # en el cron solo busca (las descargas se hacen en la PC)
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy: { fail-fast: false, max-parallel: 20, matrix: { k: "${{ fromJson(needs.buscar.outputs.matriz) }}" } }
@@ -93,6 +94,7 @@ jobs:
             if grep -q '"error"' "$f"; then continue; fi
             b=$(basename "$f" .json); cp "$f" analisis/feat/; [ -f "/tmp/nuevos/$b.jpg" ] && cp "/tmp/nuevos/$b.jpg" analisis/feat/
           done
+          ls analisis/feat | grep '\.json$' | sed 's/\.json$//' > analisis/hechos.txt
           git show main:edits/analisis/resumen.py > /tmp/resumen.py
           python3 /tmp/resumen.py analisis/videos.json analisis/feat analisis
           # errores (para ver si YouTube bloquea)
