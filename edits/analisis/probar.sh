@@ -1,0 +1,19 @@
+#!/bin/bash
+# Video de prueba: 12 s, 120 BPM (beat cada 0.5 s). Cortes de color en cada beat hasta 4 s, luego cada 0.25 s.
+# Audio: tono suave 0-4 s y bombo + bajo fuerte desde 4 s (drop en 4.0 s). Se espera: drop_t≈4, cortes_en_beat alto.
+set -e
+cd "$(mktemp -d)"
+i=0; : > lista.txt
+for t in $(python3 -c "print(' '.join(str(x) for x in [0.5]*8+[0.25]*16))"); do
+  c=$(python3 -c "import random;print('#%06x'%random.randint(0,0xffffff))")
+  ffmpeg -loglevel error -y -f lavfi -i "color=c=$c:s=540x960:r=30:d=$t" -vf "drawbox=x=$((i*20%400)):y=300:w=120:h=120:c=white:t=fill" seg$i.mp4
+  echo "file seg$i.mp4" >> lista.txt; i=$((i+1))
+done
+ffmpeg -loglevel error -y -f concat -i lista.txt -c copy v.mp4
+ffmpeg -loglevel error -y -f lavfi -i "sine=f=440:d=4" -af "volume=0.05" a1.wav
+ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.9*sin(2*PI*55*t)*exp(-8*mod(t,0.5))':d=8:s=22050" a2.wav
+ffmpeg -loglevel error -y -i a1.wav -i a2.wav -filter_complex "[0][1]concat=n=2:v=0:a=1" a.wav
+ffmpeg -loglevel error -y -i v.mp4 -i a.wav -shortest -c:v copy -c:a aac prueba.mp4
+echo '{"x": {"id": "x", "vistas": 1}}' > vids.json; echo x > ids.txt
+VIDEO_LOCAL=$PWD/prueba.mp4 python3 "$1/analizar.py" vids.json ids.txt out
+python3 -c "import json;d=json.load(open('out/x.json'));[print(k,'=',v) for k,v in d.items() if k!='cortes_t'];print('cortes_t', d.get('cortes_t'))"

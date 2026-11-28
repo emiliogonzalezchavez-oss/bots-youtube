@@ -3,17 +3,26 @@ Uso: python resumen.py videos.json feat_dir salida_dir
 """
 import json, os, sys
 from collections import Counter
+import warnings
 import numpy as np
 import pandas as pd
+warnings.filterwarnings("ignore")
 
-vids = json.load(open(sys.argv[1]))
+def num(x, f=".2f"):
+    try:
+        return format(float(x), f) if pd.notna(x) else "—"
+    except (TypeError, ValueError):
+        return "—"
+
+
+vids = json.load(open(sys.argv[1], encoding="utf-8"))
 FD, OUT = sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
 rows, errores = [], Counter()
 for f in os.listdir(FD):
     if not f.endswith(".json"):
         continue
-    ft = json.load(open(os.path.join(FD, f)))
+    ft = json.load(open(os.path.join(FD, f), encoding="utf-8"))
     if "error" in ft:
         errores[ft["error"][:80]] += 1
         continue
@@ -59,7 +68,7 @@ mal = df[df["viral"] <= df["viral"].quantile(0.5)]
 L += ["\n## Top 10% más virales vs. mitad de abajo (medianas)\n", f"Top: {len(top)} edits · Abajo: {len(mal)} edits\n",
       "| medida | top 10% | mitad baja | todos |", "|---|---|---|---|"]
 for f in FEATS:
-    L.append(f"| {f} | {top[f].median():.3g} | {mal[f].median():.3g} | {df[f].median():.3g} |")
+    L.append(f"| {f} | {num(top[f].median(), '.3g')} | {num(mal[f].median(), '.3g')} | {num(df[f].median(), '.3g')} |")
 
 L.append("\n## Canciones más usadas en el top 10%\n")
 canc = Counter(f"{a} — {t}" for a, t in zip(top["artist"].fillna("?"), top["track"].fillna("?")) if t != "?")
@@ -73,8 +82,9 @@ L.append("\n## Top 40 por viralidad\n")
 L.append("| vistas | subs | viral | dur | cortes/s | en beat | drop % | loop | canción | link |")
 L.append("|---|---|---|---|---|---|---|---|---|---|")
 for _, r in df.sort_values("viral", ascending=False).head(40).iterrows():
-    L.append(f"| {r['vistas']:,} | {r['subs'] if pd.notna(r['subs']) else '?'} | {r['viral']:.1f} | {r['duracion_s']:.0f} | "
-             f"{r['cortes_por_seg']:.2f} | {r.get('cortes_en_beat', float('nan')):.2f} | {r.get('drop_pct', float('nan')):.2f} | "
-             f"{r['loop_similitud']:.2f} | {(r['track'] or '')[:30]} | https://youtu.be/{r['id']} |")
+    track = r.get("track"); track = track if isinstance(track, str) else ""
+    L.append(f"| {int(r['vistas']):,} | {num(r.get('subs'), '.0f')} | {num(r['viral'], '.1f')} | {num(r['duracion_s'], '.0f')} | "
+             f"{num(r.get('cortes_por_seg'))} | {num(r.get('cortes_en_beat'))} | {num(r.get('drop_pct'))} | "
+             f"{num(r.get('loop_similitud'))} | {track[:30]} | https://youtu.be/{r['id']} |")
 open(os.path.join(OUT, "resumen.md"), "w").write("\n".join(L) + "\n")
 print("\n".join(L[:60]))

@@ -1,0 +1,11 @@
+name: Probar analizador
+on: workflow_dispatch
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
+          pip install -q yt-dlp scenedetect opencv-python-headless librosa numpy
+          bash edits/analisis/probar.sh "$PWD/edits/analisis"

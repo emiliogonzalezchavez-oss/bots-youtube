@@ -31,8 +31,11 @@ hechos = set((bajar("hechos.txt") or "").split())
 for f in os.listdir(FEAT):   # borrar resultados rotos (de una corrida que falló)
     if f.endswith(".json"):
         try:
-            json.load(open(os.path.join(FEAT, f), encoding="utf-8"))
+            d = json.load(open(os.path.join(FEAT, f), encoding="utf-8"))
+            borrar = d.get("etapa") == "analisis"   # falló por bug del analizador: reintentar
         except Exception:
+            borrar = True
+        if borrar:
             os.remove(os.path.join(FEAT, f))
 hechos |= {f[:-5] for f in os.listdir(FEAT) if f.endswith(".json")}
 pend = [k for k, v in sorted(vids.items(), key=lambda kv: -kv[1].get("vistas", 0)) if k not in hechos]
@@ -44,17 +47,29 @@ for i in range(PROCESOS):
     env = dict(os.environ, PAUSA="2", PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     procs.append(subprocess.Popen([sys.executable, os.path.join(AQUI, "analizar.py"), os.path.join(AQUI, "videos.json"),
                                    f, FEAT, "100000"], env=env))
+
+
+def empacar():
+    zp = os.path.join(AQUI, "resultados.zip")
+    n = 0
+    with zipfile.ZipFile(zp + ".tmp", "w", zipfile.ZIP_DEFLATED) as z:
+        for f in os.listdir(FEAT):
+            z.write(os.path.join(FEAT, f), f); n += f.endswith(".json")
+    os.replace(zp + ".tmp", zp)
+    return n
+
+
+t_zip = time.time()
 try:
-    for p in procs:
-        p.wait()
+    while any(p.poll() is None for p in procs):
+        time.sleep(20)
+        if time.time() - t_zip > 600:   # cada 10 min: así aunque cierres la ventana ya hay resultados
+            n = empacar(); t_zip = time.time()
+            print(f"\n=== {n} de {len(vids)} edits medidos (resultados.zip actualizado) ===\n", flush=True)
 except KeyboardInterrupt:
     print("\nParando...")
     for p in procs:
         p.terminate()
 finally:
-    zp = os.path.join(AQUI, "resultados.zip")
-    n = 0
-    with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in os.listdir(FEAT):
-            z.write(os.path.join(FEAT, f), f); n += f.endswith(".json")
+    n = empacar()
     print(f"\nListo: {n} edits medidos en resultados.zip. Avísale a Claude.")

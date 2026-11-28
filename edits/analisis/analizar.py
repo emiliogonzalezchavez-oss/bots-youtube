@@ -21,6 +21,8 @@ except Exception:
 
 
 def bajar(vid, d):
+    if os.environ.get("VIDEO_LOCAL"):   # para pruebas: no baja nada
+        return os.environ["VIDEO_LOCAL"], {"track": "prueba", "artist": "yo", "fps": 30, "ancho": 1080, "alto": 1920, "descripcion": ""}
     import yt_dlp
     opts = {"format": "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720]/b", "merge_output_format": "mp4",
             "outtmpl": os.path.join(d, "v.%(ext)s"), "quiet": True, "no_warnings": True, "noplaylist": True,
@@ -124,16 +126,18 @@ def audio(path, cuts, dur):
     return r
 
 
-seguidos = 0
+seguidos = bugs = 0
 for n, vid in enumerate(ids):
     if (time.time() - t_ini) / 60 > MIN_MAX:
         print("tiempo agotado"); break
     if os.path.exists(os.path.join(OUT, vid + ".json")):
         continue
     t0 = time.time()
-    with tempfile.TemporaryDirectory() as d:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:   # en Windows a veces el archivo sigue abierto
+        etapa = "descarga"
         try:
             path, meta = bajar(vid, d)
+            etapa = "analisis"
             cap = cv2.VideoCapture(path)
             dur = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (cap.get(cv2.CAP_PROP_FPS) or 30)
             cap.release()
@@ -160,7 +164,7 @@ for n, vid in enumerate(ids):
                 cv2.imwrite(os.path.join(OUT, vid + ".jpg"), hoja, [cv2.IMWRITE_JPEG_QUALITY, 70])
         except Exception as e:
             msg = str(e)[:300]
-            feat = {"id": vid, "error": msg}
+            feat = {"id": vid, "error": msg, "etapa": etapa}
             if "Traceback" not in msg:
                 traceback.print_exc(limit=1)
     if "error" in feat and any(x in feat["error"] for x in ("not a bot", "429", "Too Many")):
@@ -170,6 +174,12 @@ for n, vid in enumerate(ids):
         time.sleep(30 * seguidos)
         continue   # no guardar: se reintenta en la próxima corrida
     seguidos = 0
+    if feat.get("etapa") == "analisis":
+        bugs += 1
+        if bugs >= 5:
+            print("5 errores de análisis seguidos (bug del analizador); paro"); break
+    else:
+        bugs = 0
     txt = json.dumps(feat, ensure_ascii=False, default=lambda o: o.item() if hasattr(o, "item") else str(o))
     open(os.path.join(OUT, vid + ".json"), "w", encoding="utf-8").write(txt)
     if PAUSA:
