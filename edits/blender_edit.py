@@ -188,8 +188,13 @@ def cambiar_llantas():
     if not ruta or not os.path.exists(ruta):
         return
     import numpy as np
-    KL = ("tire", "tyre", "llanta", "neum", "reifen", "pneu", "rubber")
-    viejas = [o for o in _ll if o.material_slots and all(sl.material and any(k in sl.material.name.lower() for k in KL) for sl in o.material_slots)]
+    KL = ("tire", "tyre", "llanta", "neum", "reifen", "pneu")
+    def es_llanta(o):
+        d = o.dimensions * 0
+        a_, b_ = bbox([o]); d = b_ - a_
+        return (o.material_slots and all(sl.material and any(k in sl.material.name.lower() for k in KL) for sl in o.material_slots)
+                and 0.35 < d.z < 1.0 and abs(d.x - d.z) < 0.25 * d.z and d.y < 0.6 * d.z)
+    viejas = [o for o in _ll if es_llanta(o)]
     if not viejas:
         print("LLANTA: el modelo no tiene llantas separadas, no se cambian"); return
     antes = set(bpy.data.objects)
@@ -527,6 +532,46 @@ def _n(nt, tipo, **kw):
         else:
             setattr(n, k, v)
     return n
+
+
+def material_llanta(m):
+    """llanta real: banda mate (0.85) y costado con brillo leve (0.5); polvo café-gris en ranuras (AO/pointiness) y abajo"""
+    p = bsdf(m)
+    if not p or m.get("llanta_ok"):
+        return
+    m["llanta_ok"] = True
+    nt = m.node_tree; L_ = nt.links.new
+    geo = _n(nt, "ShaderNodeNewGeometry"); sn = _n(nt, "ShaderNodeSeparateXYZ"); L_(geo.outputs["Normal"], sn.inputs[0])
+    ay = _n(nt, "ShaderNodeMath", operation="ABSOLUTE"); L_(sn.outputs["Y"], ay.inputs[0])
+    cost = _n(nt, "ShaderNodeMapRange", i_From_Min=0.55, i_From_Max=0.85, i_To_Min=0.0, i_To_Max=1.0); L_(ay.outputs[0], cost.inputs["Value"])
+    rg = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.85, i_To_Max=0.5); L_(cost.outputs["Result"], rg.inputs["Value"])
+    # polvo: cavidades (AO + pointiness) y parte baja, cortado con ruido; color café-gris
+    ao = _n(nt, "ShaderNodeAmbientOcclusion", samples=8, i_Distance=0.025)
+    inv = _n(nt, "ShaderNodeMath", operation="SUBTRACT"); inv.inputs[0].default_value = 1.0; L_(ao.outputs["AO"], inv.inputs[1])
+    pt = _n(nt, "ShaderNodeMapRange", i_From_Min=0.5, i_From_Max=0.42, i_To_Min=0.0, i_To_Max=1.0); L_(geo.outputs["Pointiness"], pt.inputs["Value"])
+    cav = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(inv.outputs[0], cav.inputs[0]); L_(pt.outputs["Result"], cav.inputs[1])
+    tc = _n(nt, "ShaderNodeTexCoord", object=ref); sz = _n(nt, "ShaderNodeSeparateXYZ"); L_(tc.outputs["Object"], sz.inputs[0])
+    abajo = _n(nt, "ShaderNodeMapRange", i_From_Min=0.45, i_From_Max=0.05, i_To_Min=0.15, i_To_Max=0.6); L_(sz.outputs["Z"], abajo.inputs["Value"])
+    suma = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); suma.inputs[1].default_value = 0.8
+    L_(cav.outputs[0], suma.inputs[0]); L_(abajo.outputs["Result"], suma.inputs[2])
+    nz = _n(nt, "ShaderNodeTexNoise", i_Scale=35.0, i_Detail=4.0); L_(tc.outputs["Object"], nz.inputs["Vector"])
+    nzm = _n(nt, "ShaderNodeMapRange", i_From_Min=0.35, i_From_Max=0.65, i_To_Min=0.55, i_To_Max=1.0); L_(nz.outputs["Fac"], nzm.inputs["Value"])
+    pol = _n(nt, "ShaderNodeMath", operation="MULTIPLY", use_clamp=True); L_(suma.outputs[0], pol.inputs[0]); L_(nzm.outputs["Result"], pol.inputs[1])
+    mix = _n(nt, "ShaderNodeMix", data_type="RGBA"); L_(pol.outputs[0], mix.inputs["Factor"])
+    bc = p.inputs["Base Color"]
+    if bc.is_linked:
+        L_(bc.links[0].from_socket, mix.inputs[6])
+    else:
+        mix.inputs[6].default_value = (0.025, 0.025, 0.027, 1)
+    mix.inputs[7].default_value = (0.30, 0.25, 0.19, 1)
+    L_(mix.outputs[2], bc)
+    rpol = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(rg.outputs["Result"], rpol.inputs[0])
+    rp2 = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); rp2.inputs[1].default_value = 0.95; L_(pol.outputs[0], rp2.inputs[0])
+    L_(rp2.outputs[0], rpol.inputs[1])
+    for l in list(p.inputs["Roughness"].links):
+        nt.links.remove(l)
+    L_(rpol.outputs[0], p.inputs["Roughness"])
+    p.inputs["Specular IOR Level"].default_value = 0.35; p.inputs["Metallic"].default_value = 0.0
 
 
 def pintura_real(m, p):
@@ -917,46 +962,6 @@ def grupos_ruedas():
         if g: g[1].append(o)
         else: gs.append([c, [o]])
     return gs
-
-
-def material_llanta(m):
-    """llanta real: banda mate (0.85) y costado con brillo leve (0.5); polvo café-gris en ranuras (AO/pointiness) y abajo"""
-    p = bsdf(m)
-    if not p or m.get("llanta_ok"):
-        return
-    m["llanta_ok"] = True
-    nt = m.node_tree; L_ = nt.links.new
-    geo = _n(nt, "ShaderNodeNewGeometry"); sn = _n(nt, "ShaderNodeSeparateXYZ"); L_(geo.outputs["Normal"], sn.inputs[0])
-    ay = _n(nt, "ShaderNodeMath", operation="ABSOLUTE"); L_(sn.outputs["Y"], ay.inputs[0])
-    cost = _n(nt, "ShaderNodeMapRange", i_From_Min=0.55, i_From_Max=0.85, i_To_Min=0.0, i_To_Max=1.0); L_(ay.outputs[0], cost.inputs["Value"])
-    rg = _n(nt, "ShaderNodeMapRange", i_From_Min=0.0, i_From_Max=1.0, i_To_Min=0.85, i_To_Max=0.5); L_(cost.outputs["Result"], rg.inputs["Value"])
-    # polvo: cavidades (AO + pointiness) y parte baja, cortado con ruido; color café-gris
-    ao = _n(nt, "ShaderNodeAmbientOcclusion", samples=8, i_Distance=0.025)
-    inv = _n(nt, "ShaderNodeMath", operation="SUBTRACT"); inv.inputs[0].default_value = 1.0; L_(ao.outputs["AO"], inv.inputs[1])
-    pt = _n(nt, "ShaderNodeMapRange", i_From_Min=0.5, i_From_Max=0.42, i_To_Min=0.0, i_To_Max=1.0); L_(geo.outputs["Pointiness"], pt.inputs["Value"])
-    cav = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(inv.outputs[0], cav.inputs[0]); L_(pt.outputs["Result"], cav.inputs[1])
-    tc = _n(nt, "ShaderNodeTexCoord", object=ref); sz = _n(nt, "ShaderNodeSeparateXYZ"); L_(tc.outputs["Object"], sz.inputs[0])
-    abajo = _n(nt, "ShaderNodeMapRange", i_From_Min=0.45, i_From_Max=0.05, i_To_Min=0.15, i_To_Max=0.6); L_(sz.outputs["Z"], abajo.inputs["Value"])
-    suma = _n(nt, "ShaderNodeMath", operation="MULTIPLY_ADD"); suma.inputs[1].default_value = 0.8
-    L_(cav.outputs[0], suma.inputs[0]); L_(abajo.outputs["Result"], suma.inputs[2])
-    nz = _n(nt, "ShaderNodeTexNoise", i_Scale=35.0, i_Detail=4.0); L_(tc.outputs["Object"], nz.inputs["Vector"])
-    nzm = _n(nt, "ShaderNodeMapRange", i_From_Min=0.35, i_From_Max=0.65, i_To_Min=0.55, i_To_Max=1.0); L_(nz.outputs["Fac"], nzm.inputs["Value"])
-    pol = _n(nt, "ShaderNodeMath", operation="MULTIPLY", use_clamp=True); L_(suma.outputs[0], pol.inputs[0]); L_(nzm.outputs["Result"], pol.inputs[1])
-    mix = _n(nt, "ShaderNodeMix", data_type="RGBA"); L_(pol.outputs[0], mix.inputs["Factor"])
-    bc = p.inputs["Base Color"]
-    if bc.is_linked:
-        L_(bc.links[0].from_socket, mix.inputs[6])
-    else:
-        mix.inputs[6].default_value = (0.025, 0.025, 0.027, 1)
-    mix.inputs[7].default_value = (0.30, 0.25, 0.19, 1)
-    L_(mix.outputs[2], bc)
-    rpol = _n(nt, "ShaderNodeMath", operation="MAXIMUM"); L_(rg.outputs["Result"], rpol.inputs[0])
-    rp2 = _n(nt, "ShaderNodeMath", operation="MULTIPLY"); rp2.inputs[1].default_value = 0.95; L_(pol.outputs[0], rp2.inputs[0])
-    L_(rp2.outputs[0], rpol.inputs[1])
-    for l in list(p.inputs["Roughness"].links):
-        nt.links.remove(l)
-    L_(rpol.outputs[0], p.inputs["Roughness"])
-    p.inputs["Specular IOR Level"].default_value = 0.35; p.inputs["Metallic"].default_value = 0.0
 
 
 def ruedas_reales():
