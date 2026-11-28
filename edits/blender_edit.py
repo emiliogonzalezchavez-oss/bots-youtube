@@ -247,7 +247,7 @@ def cambiar_llantas():
         return arr @ M[:3, :3].T + M[:3, 3]
     src_cos = np.concatenate([vcos(o) for o in elegido])
     cs, as_, e1s, e2s, zs, rs = marco(src_cos)
-    in_s, out_s, w_s = np.percentile(rs, 0.5), np.percentile(rs, 99.9), np.percentile(np.abs(zs), 99.8)
+    in_s, out_s, w_s = np.percentile(rs, 0.02), np.percentile(rs, 99.9), np.percentile(np.abs(zs), 99.8)   # 0.02: el talón real, no el forro interior
     if PLAN.get("llanta_flip"):
         as_ = -as_; e2s = -e2s
     _a, _b = bbox(objs); ctr_y = (_a.y + _b.y) / 2
@@ -256,7 +256,7 @@ def cambiar_llantas():
         tc_ = vcos(t); ct, at, e1t, e2t, zt, rt = marco(tc_)
         if (ct[1] - ctr_y) * at[1] < 0:   # el costado con letras hacia afuera del coche
             at = -at; e2t = -e2t
-        in_t, out_t, w_t = np.percentile(rt, 0.5), np.percentile(rt, 99.8), np.percentile(np.abs(zt), 99.5)
+        in_t, out_t, w_t = np.percentile(rt, 0.02), np.percentile(rt, 99.8), np.percentile(np.abs(zt), 99.5)
         e1t = e1t - at * (e1t @ at); e1t /= np.linalg.norm(e1t); e2t = np.cross(at, e1t)
         for o in elegido:
             no = o.copy(); no.data = o.data.copy(); link(no); no.name = f"Tire_real_{i}"
@@ -978,10 +978,10 @@ def ruedas_reales():
         lado = 1 if c.y > 0 else -1
         # forro del pasarruedas: arco detrás/arriba de la llanta + tapa interior (no se ve hueco negro infinito)
         import bmesh
-        bm = bmesh.new(); seg = 28; Rr = R + 0.045; ww = wt + 0.07
+        bm = bmesh.new(); seg = 40; Rr = R + 0.035; ww = wt + 0.05
         anillos = []
         for i in range(seg + 1):
-            t = math.radians(-15 + 210 * i / seg)
+            t = math.radians(8 + 164 * i / seg)
             anillos.append([bm.verts.new((c.x + Rr * math.cos(t), c.y + lado * (yy - 0.5) * ww, c.z + Rr * math.sin(t))) for yy in (0.0, 1.0)])
         for i in range(seg):
             bm.faces.new((anillos[i][0], anillos[i + 1][0], anillos[i + 1][1], anillos[i][1]))
