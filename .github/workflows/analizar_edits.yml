@@ -1,0 +1,102 @@
+name: Analizar edits (fórmula de retención)
+# 1) busca edits con la API de YouTube  2) los baja y mide en paralelo  3) cruza todo con vistas/subs
+# Resultados en la rama renders: analisis/videos.json, analisis/feat/, analisis/resumen.md, analisis/datos.csv
+on:
+  workflow_dispatch:
+    inputs:
+      busquedas: { description: "búsquedas de API (100 unidades c/u, máx ~90/día)", default: "85" }
+      max_videos: { description: "máximo de videos a analizar en esta corrida", default: "3000" }
+      partes: { description: "jobs en paralelo", default: "20" }
+      saltar_busqueda: { description: "true = solo analizar los ya encontrados", default: "false" }
+  schedule:
+    - cron: "17 9 * * *"   # sigue juntando miles cada día con la cuota nueva
+permissions: { contents: write }
+concurrency: { group: analizar-edits, cancel-in-progress: false }
+env:
+  BUSQ: ${{ inputs.busquedas || '85' }}
+  MAXV: ${{ inputs.max_videos || '3000' }}
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    outputs: { matriz: "${{ steps.m.outputs.matriz }}" }
+    steps:
+      - uses: actions/checkout@v5
+      - name: Datos previos
+        run: |
+          mkdir -p prev/feat
+          if git fetch -q origin renders 2>/dev/null; then
+            git show origin/renders:analisis/videos.json > prev/videos.json 2>/dev/null || echo '{}' > prev/videos.json
+            git ls-tree --name-only origin/renders analisis/feat/ 2>/dev/null | grep '\.json$' | xargs -r -n1 basename | sed 's/\.json$//' > prev/hechos.txt || true
+          else echo '{}' > prev/videos.json; fi
+          touch prev/hechos.txt; wc -l prev/hechos.txt
+      - name: Buscar en YouTube
+        env: { YT_API_KEY: "${{ secrets.YT_API_KEY }}" }
+        run: |
+          if [ "${{ inputs.saltar_busqueda }}" = "true" ]; then cp prev/videos.json videos.json
+          else python3 edits/analisis/buscar.py prev/videos.json videos.json "$BUSQ"; fi
+      - name: Repartir
+        id: m
+        run: |
+          N=${{ inputs.partes || '20' }}
+          python3 - "$N" <<'PY'
+          import json, sys
+          n = int(sys.argv[1]); v = json.load(open("videos.json")); hechos = set(open("prev/hechos.txt").read().split())
+          pend = [k for k, x in sorted(v.items(), key=lambda kv: -kv[1].get("vistas", 0)) if k not in hechos]
+          pend = pend[:int(__import__("os").environ["MAXV"])]
+          print("pendientes", len(pend))
+          for i in range(n):
+              open(f"ids_{i}.txt", "w").write("\n".join(pend[i::n]))
+          open(__import__("os").environ["GITHUB_OUTPUT"], "a").write("matriz=" + json.dumps(list(range(n))) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with: { name: lista, path: "videos.json\nids_*.txt" }
+  medir:
+    needs: buscar
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy: { fail-fast: false, max-parallel: 20, matrix: { k: "${{ fromJson(needs.buscar.outputs.matriz) }}" } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { name: lista }
+      - name: Instalar
+        run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y ffmpeg >/dev/null
+          pip install -q yt-dlp "scenedetect[opencv-headless]" librosa numpy
+      - name: Medir
+        env: { YTDLP_COOKIES: "${{ runner.temp }}/c.txt", COOK: "${{ secrets.YT_COOKIES }}" }
+        run: |
+          if [ -n "$COOK" ]; then printf '%s\n' "$COOK" > "$YTDLP_COOKIES"; fi
+          python3 edits/analisis/analizar.py videos.json ids_${{ matrix.k }}.txt feat 300 || true
+          ls feat | wc -l
+      - uses: actions/upload-artifact@v4
+        with: { name: "feat-${{ matrix.k }}", path: feat, if-no-files-found: ignore }
+  resumen:
+    needs: [buscar, medir]
+    if: always() && needs.buscar.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { name: lista }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "feat-*", path: nuevos, merge-multiple: true }
+      - name: Juntar y guardar
+        run: |
+          pip install -q pandas numpy
+          mkdir -p nuevos; cp videos.json /tmp/videos.json; cp -r nuevos /tmp/nuevos
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          if git fetch -q origin renders:renders 2>/dev/null; then git switch -q renders; else git switch -q --orphan renders; fi
+          mkdir -p analisis/feat; cp /tmp/videos.json analisis/videos.json
+          # no guardar errores encima de un análisis bueno; reintentar errores en la próxima corrida
+          for f in /tmp/nuevos/*.json; do [ -e "$f" ] || continue
+            if grep -q '"error"' "$f"; then continue; fi
+            b=$(basename "$f" .json); cp "$f" analisis/feat/; [ -f "/tmp/nuevos/$b.jpg" ] && cp "/tmp/nuevos/$b.jpg" analisis/feat/
+          done
+          git show main:edits/analisis/resumen.py > /tmp/resumen.py
+          python3 /tmp/resumen.py analisis/videos.json analisis/feat analisis
+          # errores (para ver si YouTube bloquea)
+          grep -h -o '"error": "[^"]\{0,120\}' /tmp/nuevos/*.json 2>/dev/null | sort | uniq -c | sort -rn | head -5 > analisis/errores.txt || true
+          cat analisis/errores.txt
+          git add analisis; git commit -qm "analisis $(date -u +%F)" || true
+          for i in 1 2 3; do git pull -q --rebase origin renders 2>/dev/null; git push -q origin renders && break; sleep 5; done
