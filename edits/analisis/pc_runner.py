@@ -84,6 +84,9 @@ def es_coche(v):
 cand = [(k, v) for k, v in vids.items() if k not in hechos and segs(v.get("duracion")) <= 70 and es_coche(v)]
 cand.sort(key=lambda kv: (not es_edit(kv[1]), -kv[1].get("vistas", 0)))
 pend = [k for k, _ in cand][:int(os.environ.get("LIMITE", "1000000"))]
+if os.path.exists(os.path.join(AQUI, "solo_canciones.txt")):   # YouTube bloqueó las descargas: solo terminar las canciones
+    print("solo_canciones.txt: no bajo videos, solo reconozco las canciones pendientes.")
+    pend = []
 print(f"\n{len(vids)} edits encontrados, {len(hechos)} ya medidos, {len(pend)} por medir con {PROCESOS} procesos.\n")
 procs = []
 for i in range(PROCESOS):

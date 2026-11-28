@@ -32,3 +32,6 @@ python3 -c "import json,glob;[print(f, json.load(open(f)).get('caras_pct')) for 
 mkdir -p pc2 && cp "$1/analizar.py" "$1/pc_runner.py" "$1/reconocer.py" "$1/yunet.onnx" pc2/
 LIMITE=3 PROCESOS=2 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py
 cat pc2/shazam_log.txt; python3 -c "import json,glob;[print('CANCION', f[-16:], json.load(open(f)).get('shazam_titulo'), json.load(open(f)).get('shazam_pendiente')) for f in glob.glob('pc2/feat/*.json')]"; ls pc2/clips 2>/dev/null | wc -l
+# --- prueba 5: solo_canciones.txt -> no baja nada y termina las canciones pendientes ---
+rm -f pc2/shazam_log.txt; cp pc2/clips/../feat/*.json /dev/null 2>&1; touch pc2/solo_canciones.txt
+cp "$1/pc_runner.py" pc2/ && PROCESOS=2 VIDEO_LOCAL=$PWD/prueba2.mp4 python3 pc2/pc_runner.py | grep -E "solo_canciones|por medir|Medición|Listo"
